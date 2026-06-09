@@ -63,13 +63,13 @@ export default function SignInPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0a0f1e] text-white p-6 text-center">
+      <div className="min-h-screen flex items-center justify-center bg-white text-black p-6 text-center">
         <div className="space-y-3">
-          <div className="w-16 h-16 rounded-full bg-[#c9a84c]/20 flex items-center justify-center mx-auto">
-            <Home className="w-8 h-8 text-[#c9a84c]" />
+          <div className="w-16 h-16 rounded-full bg-black flex items-center justify-center mx-auto">
+            <Home className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold">Thanks for stopping by!</h1>
-          <p className="text-[#8892a4]">
+          <p className="text-gray-500">
             You&apos;ll hear from Ben shortly. Keep an eye on your texts!
           </p>
         </div>
@@ -77,127 +77,76 @@ export default function SignInPage() {
     );
   }
 
+  const inputClass = "w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-black text-sm";
+  const agentInputClass = "w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-black text-xs";
+
   return (
-    <div className="min-h-screen bg-[#0a0f1e] text-white p-6">
+    <div className="min-h-screen bg-white text-black p-6">
       <div className="max-w-md mx-auto">
         <div className="mb-8">
-          <div className="w-10 h-10 rounded-lg bg-[#c9a84c] flex items-center justify-center mb-4">
-            <Home className="w-5 h-5 text-[#0a0f1e]" />
+          <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center mb-4">
+            <Home className="w-5 h-5 text-white" />
           </div>
           <h1 className="text-2xl font-bold">Welcome!</h1>
-          <p className="text-[#8892a4] text-sm mt-1">
+          <p className="text-gray-500 text-sm mt-1">
             Sign in to get property details &amp; updates from Ben.
           </p>
         </div>
 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <input
-              name="firstName"
-              placeholder="First Name"
-              value={form.firstName}
-              onChange={handleText}
-              className="bg-[#111827] border border-[#1e2a3a] rounded-lg px-4 py-3 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-sm"
-            />
-            <input
-              name="lastName"
-              placeholder="Last Name"
-              value={form.lastName}
-              onChange={handleText}
-              className="bg-[#111827] border border-[#1e2a3a] rounded-lg px-4 py-3 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-sm"
-            />
+            <input name="firstName" placeholder="First Name" value={form.firstName} onChange={handleText} className={inputClass} />
+            <input name="lastName" placeholder="Last Name" value={form.lastName} onChange={handleText} className={inputClass} />
           </div>
-          <input
-            name="phone"
-            placeholder="Phone Number"
-            type="tel"
-            value={form.phone}
-            onChange={handleText}
-            className="w-full bg-[#111827] border border-[#1e2a3a] rounded-lg px-4 py-3 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-sm"
-          />
-          <input
-            name="email"
-            placeholder="Email Address"
-            type="email"
-            value={form.email}
-            onChange={handleText}
-            className="w-full bg-[#111827] border border-[#1e2a3a] rounded-lg px-4 py-3 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-sm"
-          />
+          <input name="phone" placeholder="Phone Number" type="tel" value={form.phone} onChange={handleText} className={inputClass} />
+          <input name="email" placeholder="Email Address" type="email" value={form.email} onChange={handleText} className={inputClass} />
 
-          <div className="border border-[#1e2a3a] rounded-lg p-4 space-y-3 mt-1">
-            <p className="text-xs font-semibold text-[#8892a4] uppercase tracking-wide">Quick questions</p>
+          <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-1">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Quick questions</p>
             {CHECKBOXES.map(({ name, label }) => (
               <div key={name}>
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <div
                     onClick={() => handleCheck(name)}
                     className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
-                      form[name]
-                        ? 'bg-[#c9a84c] border-[#c9a84c]'
-                        : 'border-[#2d3a4a] group-hover:border-[#c9a84c]'
+                      form[name] ? 'bg-black border-black' : 'border-gray-300 group-hover:border-black'
                     }`}
                   >
                     {form[name] && (
-                      <svg className="w-3 h-3 text-[#0a0f1e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-                  <span className="text-sm text-[#d1d5db]">{label}</span>
+                  <span className="text-sm text-gray-700">{label}</span>
                 </label>
 
                 {name === 'workingWithAgent' && form.workingWithAgent && (
                   <div className="mt-3 ml-8 space-y-2">
-                    <p className="text-xs text-[#8892a4] mb-2">Agent&apos;s info (optional)</p>
+                    <p className="text-xs text-gray-400 mb-2">Agent&apos;s info (optional)</p>
                     <div className="grid grid-cols-2 gap-2">
-                      <input
-                        name="agentName"
-                        placeholder="Agent Name"
-                        value={form.agentName}
-                        onChange={handleText}
-                        className="bg-[#0d1525] border border-[#2d3a4a] rounded-lg px-3 py-2.5 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-xs"
-                      />
-                      <input
-                        name="agentBrokerage"
-                        placeholder="Brokerage"
-                        value={form.agentBrokerage}
-                        onChange={handleText}
-                        className="bg-[#0d1525] border border-[#2d3a4a] rounded-lg px-3 py-2.5 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-xs"
-                      />
+                      <input name="agentName" placeholder="Agent Name" value={form.agentName} onChange={handleText} className={agentInputClass} />
+                      <input name="agentBrokerage" placeholder="Brokerage" value={form.agentBrokerage} onChange={handleText} className={agentInputClass} />
                     </div>
-                    <input
-                      name="agentPhone"
-                      placeholder="Agent Phone"
-                      type="tel"
-                      value={form.agentPhone}
-                      onChange={handleText}
-                      className="w-full bg-[#0d1525] border border-[#2d3a4a] rounded-lg px-3 py-2.5 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-xs"
-                    />
-                    <input
-                      name="agentEmail"
-                      placeholder="Agent Email"
-                      type="email"
-                      value={form.agentEmail}
-                      onChange={handleText}
-                      className="w-full bg-[#0d1525] border border-[#2d3a4a] rounded-lg px-3 py-2.5 text-white placeholder-[#4a5568] focus:outline-none focus:border-[#c9a84c] text-xs"
-                    />
+                    <input name="agentPhone" placeholder="Agent Phone" type="tel" value={form.agentPhone} onChange={handleText} className={agentInputClass} />
+                    <input name="agentEmail" placeholder="Agent Email" type="email" value={form.agentEmail} onChange={handleText} className={agentInputClass} />
                   </div>
                 )}
               </div>
             ))}
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-[#c9a84c] hover:bg-[#d4b862] disabled:opacity-60 text-[#0a0f1e] font-bold py-3.5 rounded-lg text-sm transition-colors mt-2"
+            className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-lg text-sm transition-colors mt-2"
           >
             {loading ? 'Submitting…' : 'Sign In'}
           </button>
 
-          <p className="text-xs text-center text-[#4a5568] pb-4">
+          <p className="text-xs text-center text-gray-400 pb-4">
             Your info is only used to follow up about this property.
           </p>
         </div>
