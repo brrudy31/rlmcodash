@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\api\\\\door-knocking\" && mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\api\\\\door-knocking\\\\[id]\" && mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\dashboard\\\\door-knocking\")",
+      "Bash(ipconfig)",
+      "Bash(findstr \"IPv4\")"
+    ]
+  }
+}
