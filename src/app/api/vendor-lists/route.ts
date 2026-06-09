@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, ensureSchema } from '@/lib/db';
 
 export async function GET() {
+  await ensureSchema();
   const db = getDb();
-  const lists = db.prepare('SELECT * FROM vendor_lists ORDER BY name ASC').all();
-  return NextResponse.json(lists);
+  const { rows } = await db.execute('SELECT * FROM vendor_lists ORDER BY name ASC');
+  return NextResponse.json(rows);
 }
 
 export async function POST(request: NextRequest) {
@@ -12,8 +13,9 @@ export async function POST(request: NextRequest) {
   if (!name?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
+  await ensureSchema();
   const db = getDb();
-  const result = db.prepare('INSERT INTO vendor_lists (name) VALUES (?)').run(name.trim());
-  const list = db.prepare('SELECT * FROM vendor_lists WHERE id = ?').get(result.lastInsertRowid);
-  return NextResponse.json(list, { status: 201 });
+  const result = await db.execute({ sql: 'INSERT INTO vendor_lists (name) VALUES (?)', args: [name.trim()] });
+  const { rows } = await db.execute({ sql: 'SELECT * FROM vendor_lists WHERE id = ?', args: [Number(result.lastInsertRowid)] });
+  return NextResponse.json(rows[0], { status: 201 });
 }

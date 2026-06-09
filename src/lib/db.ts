@@ -1,143 +1,141 @@
+import { createClient, type Client as LibSQLClient } from '@libsql/client';
 import path from 'path';
-import fs from 'fs';
 
-// node:sqlite is built into Node.js 22.5+ — no installation required
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { DatabaseSync } = require('node:sqlite');
+let _client: LibSQLClient | null = null;
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const DB_PATH = path.join(DATA_DIR, 'database.db');
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _db: any = null;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getDb(): any {
-  if (!_db) {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    _db = new DatabaseSync(DB_PATH);
-    _db.exec('PRAGMA journal_mode = WAL');
-    _db.exec('PRAGMA foreign_keys = ON');
-    initSchema(_db);
+export function getDb(): LibSQLClient {
+  if (!_client) {
+    const url = process.env.TURSO_DATABASE_URL ?? `file:${path.join(process.cwd(), 'data/database.db')}`;
+    const authToken = process.env.TURSO_AUTH_TOKEN;
+    _client = createClient({ url, authToken });
   }
-  return _db;
+  return _client;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function initSchema(db: any) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS clients (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      opted_out_at TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS clients (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    opted_out_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS vendor_lists (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS vendor_lists (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS vendors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      vendor_list_id INTEGER NOT NULL REFERENCES vendor_lists(id) ON DELETE CASCADE,
-      name TEXT NOT NULL,
-      trade TEXT,
-      phone TEXT,
-      email TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS vendors (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vendor_list_id INTEGER NOT NULL REFERENCES vendor_lists(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    trade TEXT,
+    phone TEXT,
+    email TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS email_campaigns (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      vendor_list_id INTEGER REFERENCES vendor_lists(id),
-      vendor_list_name TEXT NOT NULL,
-      subject TEXT NOT NULL,
-      message TEXT,
-      sent_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS email_campaigns (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vendor_list_id INTEGER REFERENCES vendor_lists(id),
+    vendor_list_name TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    message TEXT,
+    sent_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS email_sends (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      campaign_id INTEGER NOT NULL REFERENCES email_campaigns(id),
-      client_id INTEGER NOT NULL REFERENCES clients(id),
-      client_name TEXT NOT NULL,
-      client_email TEXT NOT NULL,
-      resend_message_id TEXT,
-      opened_at TEXT,
-      opted_out_at TEXT,
-      unsubscribe_token TEXT NOT NULL UNIQUE,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS email_sends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    campaign_id INTEGER NOT NULL REFERENCES email_campaigns(id),
+    client_id INTEGER NOT NULL REFERENCES clients(id),
+    client_name TEXT NOT NULL,
+    client_email TEXT NOT NULL,
+    resend_message_id TEXT,
+    opened_at TEXT,
+    opted_out_at TEXT,
+    unsubscribe_token TEXT NOT NULL UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS open_houses (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT NOT NULL,
-      address TEXT NOT NULL,
-      neighborhood TEXT,
-      city TEXT NOT NULL,
-      time_of_day TEXT,
-      total_attendees INTEGER NOT NULL DEFAULT 0,
-      neighbors INTEGER NOT NULL DEFAULT 0,
-      represented_buyers INTEGER NOT NULL DEFAULT 0,
-      unrepresented_buyers INTEGER NOT NULL DEFAULT 0,
-      notes TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS open_houses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    address TEXT NOT NULL,
+    neighborhood TEXT,
+    city TEXT NOT NULL,
+    time_of_day TEXT,
+    total_attendees INTEGER NOT NULL DEFAULT 0,
+    neighbors INTEGER NOT NULL DEFAULT 0,
+    represented_buyers INTEGER NOT NULL DEFAULT 0,
+    unrepresented_buyers INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS market_stats (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      neighborhood TEXT NOT NULL,
-      zip_code TEXT,
-      month TEXT NOT NULL,
-      median_price INTEGER,
-      price_per_sqft REAL,
-      avg_days_on_market REAL,
-      homes_sold INTEGER,
-      active_listings INTEGER,
-      list_to_sale_ratio REAL,
-      notes TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS market_stats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    neighborhood TEXT NOT NULL,
+    zip_code TEXT,
+    month TEXT NOT NULL,
+    median_price INTEGER,
+    price_per_sqft REAL,
+    avg_days_on_market REAL,
+    homes_sold INTEGER,
+    active_listings INTEGER,
+    list_to_sale_ratio REAL,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS door_knocking (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      date TEXT NOT NULL,
-      area TEXT NOT NULL,
-      total_doors INTEGER NOT NULL DEFAULT 0,
-      answered INTEGER NOT NULL DEFAULT 0,
-      left_at_door INTEGER NOT NULL DEFAULT 0,
-      gave_flyer INTEGER NOT NULL DEFAULT 0,
-      gave_my_info INTEGER NOT NULL DEFAULT 0,
-      gave_vendor_list INTEGER NOT NULL DEFAULT 0,
-      notes TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
+  CREATE TABLE IF NOT EXISTS door_knocking (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    area TEXT NOT NULL,
+    total_doors INTEGER NOT NULL DEFAULT 0,
+    answered INTEGER NOT NULL DEFAULT 0,
+    left_at_door INTEGER NOT NULL DEFAULT 0,
+    gave_flyer INTEGER NOT NULL DEFAULT 0,
+    gave_my_info INTEGER NOT NULL DEFAULT 0,
+    gave_vendor_list INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 
-    CREATE TABLE IF NOT EXISTS open_house_signins (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      open_house_id INTEGER NOT NULL REFERENCES open_houses(id) ON DELETE CASCADE,
-      first_name TEXT NOT NULL,
-      last_name TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      email TEXT NOT NULL,
-      has_home_to_buy INTEGER NOT NULL DEFAULT 0,
-      has_home_to_sell INTEGER NOT NULL DEFAULT 0,
-      is_pre_approved INTEGER NOT NULL DEFAULT 0,
-      working_with_agent INTEGER NOT NULL DEFAULT 0,
-      agent_name TEXT,
-      agent_phone TEXT,
-      agent_email TEXT,
-      agent_brokerage TEXT,
-      ghl_contact_id TEXT,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-  `);
+  CREATE TABLE IF NOT EXISTS open_house_signins (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    open_house_id INTEGER NOT NULL REFERENCES open_houses(id) ON DELETE CASCADE,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT NOT NULL,
+    has_home_to_buy INTEGER NOT NULL DEFAULT 0,
+    has_home_to_sell INTEGER NOT NULL DEFAULT 0,
+    is_pre_approved INTEGER NOT NULL DEFAULT 0,
+    working_with_agent INTEGER NOT NULL DEFAULT 0,
+    agent_name TEXT,
+    agent_phone TEXT,
+    agent_email TEXT,
+    agent_brokerage TEXT,
+    ghl_contact_id TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`;
+
+let _migrated = false;
+export async function ensureSchema(): Promise<void> {
+  if (_migrated) return;
+  const db = getDb();
+  // Run each statement individually (libsql doesn't support multi-statement exec)
+  const statements = SCHEMA.split(';').map((s) => s.trim()).filter((s) => s.length > 0);
+  for (const sql of statements) {
+    await db.execute(sql);
+  }
+  _migrated = true;
 }
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Client = {
   id: number;

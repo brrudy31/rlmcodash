@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, ensureSchema } from '@/lib/db';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await ensureSchema();
   const db = getDb();
-  const signins = db
-    .prepare('SELECT * FROM open_house_signins WHERE open_house_id = ? ORDER BY created_at DESC')
-    .all(Number(id));
-  return NextResponse.json(signins);
+  const { rows } = await db.execute({
+    sql: 'SELECT * FROM open_house_signins WHERE open_house_id = ? ORDER BY created_at DESC',
+    args: [Number(id)],
+  });
+  return NextResponse.json(rows);
 }

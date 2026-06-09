@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, ensureSchema } from '@/lib/db';
 
 export async function GET() {
+  await ensureSchema();
   const db = getDb();
-
-  const campaigns = db.prepare(`
+  const { rows } = await db.execute(`
     SELECT
       ec.*,
       COUNT(es.id) as total_sent,
@@ -14,7 +14,6 @@ export async function GET() {
     LEFT JOIN email_sends es ON es.campaign_id = ec.id
     GROUP BY ec.id
     ORDER BY ec.sent_at DESC
-  `).all();
-
-  return NextResponse.json(campaigns);
+  `);
+  return NextResponse.json(rows);
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import crypto from 'crypto';
-import { getDb } from '@/lib/db';
+import { getDb, ensureSchema } from '@/lib/db';
 import type { Vendor, Client } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
@@ -19,38 +19,45 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Email not configured. Set RESEND_API_KEY and RESEND_FROM_EMAIL in .env' }, { status: 500 });
   }
 
+  await ensureSchema();
   const db = getDb();
-  const vendorList = db.prepare('SELECT * FROM vendor_lists WHERE id = ?').get(vendorListId) as { id: number; name: string } | undefined;
+
+  const { rows: vlRows } = await db.execute({ sql: 'SELECT * FROM vendor_lists WHERE id = ?', args: [vendorListId] });
+  const vendorList = vlRows[0] as unknown as { id: number | bigint; name: string } | undefined;
   if (!vendorList) {
     return NextResponse.json({ error: 'Vendor list not found' }, { status: 404 });
   }
 
-  const vendors = db.prepare('SELECT * FROM vendors WHERE vendor_list_id = ? ORDER BY name ASC').all(vendorListId) as Vendor[];
+  const { rows: vendorRows } = await db.execute({ sql: 'SELECT * FROM vendors WHERE vendor_list_id = ? ORDER BY name ASC', args: [vendorListId] });
+  const vendors = vendorRows as unknown as Vendor[];
 
-  const clientPlaceholders = clientIds.map(() => '?').join(',');
-  const clients = db
-    .prepare(`SELECT * FROM clients WHERE id IN (${clientPlaceholders}) AND opted_out_at IS NULL`)
-    .all(...clientIds) as Client[];
+  const placeholders = clientIds.map(() => '?').join(',');
+  const { rows: clientRows } = await db.execute({
+    sql: `SELECT * FROM clients WHERE id IN (${placeholders}) AND opted_out_at IS NULL`,
+    args: clientIds,
+  });
+  const clients = clientRows as unknown as Client[];
 
   if (!clients.length) {
     return NextResponse.json({ error: 'No eligible clients (all may have opted out)' }, { status: 400 });
   }
 
-  const campaignResult = db
-    .prepare('INSERT INTO email_campaigns (vendor_list_id, vendor_list_name, subject, message) VALUES (?, ?, ?, ?)')
-    .run(vendorListId, vendorList.name, subject.trim(), message?.trim() || null);
-  const campaignId = campaignResult.lastInsertRowid;
+  const campaignResult = await db.execute({
+    sql: 'INSERT INTO email_campaigns (vendor_list_id, vendor_list_name, subject, message) VALUES (?, ?, ?, ?)',
+    args: [vendorListId, vendorList.name, subject.trim(), message?.trim() || null],
+  });
+  const campaignId = Number(campaignResult.lastInsertRowid);
 
   const resend = new Resend(resendKey);
   const results = [];
 
   for (const client of clients) {
     const token = crypto.randomBytes(32).toString('hex');
-    const sendResult = db
-      .prepare('INSERT INTO email_sends (campaign_id, client_id, client_name, client_email, unsubscribe_token) VALUES (?, ?, ?, ?, ?)')
-      .run(campaignId, client.id, client.name, client.email, token);
-    const sendId = sendResult.lastInsertRowid;
-
+    const sendResult = await db.execute({
+      sql: 'INSERT INTO email_sends (campaign_id, client_id, client_name, client_email, unsubscribe_token) VALUES (?, ?, ?, ?, ?)',
+      args: [campaignId, client.id, client.name, client.email, token],
+    });
+    const sendId = Number(sendResult.lastInsertRowid);
     const unsubscribeUrl = `${appUrl}/unsubscribe?token=${token}`;
     const html = buildEmailHtml(client.name, vendorList.name, vendors, message, unsubscribeUrl);
 
@@ -61,12 +68,10 @@ export async function POST(request: NextRequest) {
         subject: subject.trim(),
         html,
       });
-
       if (error) {
         results.push({ clientEmail: client.email, success: false, error: error.message });
       } else {
-        db.prepare('UPDATE email_sends SET resend_message_id = ? WHERE id = ?')
-          .run(data?.id || null, sendId);
+        await db.execute({ sql: 'UPDATE email_sends SET resend_message_id = ? WHERE id = ?', args: [data?.id || null, sendId] });
         results.push({ clientEmail: client.email, success: true });
       }
     } catch (err) {
@@ -78,24 +83,14 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ success: true, sent: successCount, total: clients.length, results });
 }
 
-function buildEmailHtml(
-  clientName: string,
-  listName: string,
-  vendors: Vendor[],
-  customMessage: string | null,
-  unsubscribeUrl: string
-): string {
-  const vendorRows = vendors
-    .map(
-      (v) => `
-        <tr>
-          <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;font-weight:500;color:#1a1a2e;">${escHtml(v.name)}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${escHtml(v.trade || '—')}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${escHtml(v.phone || '—')}</td>
-          <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${v.email ? `<a href="mailto:${escHtml(v.email)}" style="color:#1e3d70;">${escHtml(v.email)}</a>` : '—'}</td>
-        </tr>`
-    )
-    .join('');
+function buildEmailHtml(clientName: string, listName: string, vendors: Vendor[], customMessage: string | null, unsubscribeUrl: string): string {
+  const vendorRows = vendors.map((v) => `
+    <tr>
+      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;font-weight:500;color:#1a1a2e;">${escHtml(v.name)}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${escHtml(v.trade || '—')}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${escHtml(v.phone || '—')}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${v.email ? `<a href="mailto:${escHtml(v.email)}" style="color:#1e3d70;">${escHtml(v.email)}</a>` : '—'}</td>
+    </tr>`).join('');
 
   return `<!DOCTYPE html>
 <html>
@@ -104,45 +99,39 @@ function buildEmailHtml(
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:30px 0;">
   <tr><td align="center">
     <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
-      <!-- Header -->
       <tr>
         <td style="background:linear-gradient(135deg,#0a1628,#162d57);padding:36px 40px;text-align:center;">
           <h1 style="margin:0;color:#c9a84c;font-size:28px;letter-spacing:6px;font-weight:700;">RLM&amp;CO</h1>
           <p style="margin:8px 0 0;color:#8ba3c0;font-size:13px;letter-spacing:1px;">VENDOR RESOURCE LIST</p>
         </td>
       </tr>
-      <!-- Body -->
       <tr>
         <td style="padding:36px 40px;">
           <p style="margin:0 0 8px;color:#555;font-size:14px;">Dear ${escHtml(clientName)},</p>
           ${customMessage ? `<p style="margin:16px 0;color:#333;font-size:15px;line-height:1.6;">${escHtml(customMessage).replace(/\n/g, '<br>')}</p>` : ''}
           <p style="margin:16px 0;color:#333;font-size:15px;line-height:1.6;">
-            Please find below our curated <strong>${escHtml(listName)}</strong> vendor list. These professionals have been selected for their quality, reliability, and expertise.
+            Please find below our curated <strong>${escHtml(listName)}</strong> vendor list.
           </p>
-          <!-- Table -->
           <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:6px;overflow:hidden;margin-top:24px;border:1px solid #e0e0e0;">
             <thead>
               <tr style="background:#0a1628;">
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;font-weight:600;">NAME</th>
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;font-weight:600;">TRADE / SPECIALTY</th>
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;font-weight:600;">PHONE</th>
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;font-weight:600;">EMAIL</th>
+                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">NAME</th>
+                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">TRADE</th>
+                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">PHONE</th>
+                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">EMAIL</th>
               </tr>
             </thead>
             <tbody>${vendorRows}</tbody>
           </table>
-          <p style="margin:28px 0 0;color:#555;font-size:14px;line-height:1.6;">
-            Please don't hesitate to reach out if you have any questions or need additional information.
-          </p>
+          <p style="margin:28px 0 0;color:#555;font-size:14px;line-height:1.6;">Please don't hesitate to reach out if you have any questions.</p>
           <p style="margin:8px 0 0;color:#555;font-size:14px;">Warm regards,<br><strong>RLM&amp;CO</strong></p>
         </td>
       </tr>
-      <!-- Footer -->
       <tr>
         <td style="background:#f8f9fb;border-top:1px solid #e8e8e8;padding:20px 40px;text-align:center;">
           <p style="margin:0;color:#999;font-size:12px;">
             You received this email because you are on our client list.<br>
-            To unsubscribe from future emails, <a href="${unsubscribeUrl}" style="color:#1e3d70;text-decoration:underline;">click here</a>.
+            To unsubscribe, <a href="${unsubscribeUrl}" style="color:#1e3d70;">click here</a>.
           </p>
         </td>
       </tr>
@@ -154,9 +143,5 @@ function buildEmailHtml(
 }
 
 function escHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

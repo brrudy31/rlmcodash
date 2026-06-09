@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { getDb, ensureSchema } from '@/lib/db';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParse = require('pdf-parse');
 
@@ -109,12 +109,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // If caller passes ?save=true, save to DB immediately
   const save = req.nextUrl.searchParams.get('save') === 'true';
   if (save) {
+    await ensureSchema();
     const db = getDb();
-    const insert = db.prepare(
-      'INSERT INTO vendors (vendor_list_id, name, trade, phone, email) VALUES (?, ?, ?, ?, ?)'
-    );
     for (const v of preview) {
-      insert.run(id, v.name, v.trade || null, v.phone || null, v.email || null);
+      await db.execute({
+        sql: 'INSERT INTO vendors (vendor_list_id, name, trade, phone, email) VALUES (?, ?, ?, ?, ?)',
+        args: [id, v.name, v.trade || null, v.phone || null, v.email || null],
+      });
     }
     return NextResponse.json({ imported: preview.length });
   }
