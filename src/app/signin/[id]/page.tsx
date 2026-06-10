@@ -138,16 +138,22 @@ export default function SignInPage() {
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
+          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-1">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <span className="font-semibold text-gray-700">Privacy Notice:</span> The personal information you provide on this sign-in sheet is collected solely for the purpose of property follow-up and visitor log compliance. Your contact details will be shared only with the homeowner and listing agent as required for the security and documentation of this showing. Your information will not be sold, distributed, or used for any purpose unrelated to this property.
+            </p>
+          </div>
+
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-lg text-sm transition-colors mt-2"
+            className="w-full bg-black hover:bg-gray-800 disabled:opacity-50 text-white font-bold py-3.5 rounded-lg text-sm transition-colors"
           >
             {loading ? 'Submitting…' : 'Sign In'}
           </button>
 
           <p className="text-xs text-center text-gray-400 pb-4">
-            Your info is only used to follow up about this property.
+            By signing in you acknowledge the privacy notice above.
           </p>
         </div>
       </div>
