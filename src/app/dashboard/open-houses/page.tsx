@@ -7,9 +7,9 @@ import { QRCodeSVG } from 'qrcode.react';
 
 interface OpenHouse {
   id: number; date: string; address: string; neighborhood: string | null;
-  city: string; time_of_day: string | null; total_attendees: number;
-  neighbors: number; represented_buyers: number; unrepresented_buyers: number;
-  notes: string | null; created_at: string;
+  city: string; start_time: string | null; end_time: string | null;
+  total_attendees: number; neighbors: number; represented_buyers: number;
+  unrepresented_buyers: number; notes: string | null; summary_sent_at: string | null; created_at: string;
 }
 
 interface SignIn {
@@ -21,11 +21,9 @@ interface SignIn {
 }
 
 const emptyForm = {
-  date: '', address: '', neighborhood: '', city: '', time_of_day: '',
+  date: '', address: '', neighborhood: '', city: '', start_time: '', end_time: '',
   total_attendees: '', neighbors: '', represented_buyers: '', unrepresented_buyers: '', notes: '',
 };
-
-const TIME_OPTIONS = ['Morning (10am–12pm)', 'Midday (12pm–2pm)', 'Afternoon (2pm–4pm)', 'Late Afternoon (4pm–6pm)', 'Evening (6pm+)'];
 
 type SortKey = keyof OpenHouse;
 
@@ -70,7 +68,7 @@ export default function OpenHousesPage() {
     setEditing(h);
     setForm({
       date: h.date, address: h.address, neighborhood: h.neighborhood || '',
-      city: h.city, time_of_day: h.time_of_day || '',
+      city: h.city, start_time: h.start_time || '', end_time: h.end_time || '',
       total_attendees: String(h.total_attendees), neighbors: String(h.neighbors),
       represented_buyers: String(h.represented_buyers), unrepresented_buyers: String(h.unrepresented_buyers),
       notes: h.notes || '',
@@ -124,6 +122,14 @@ export default function OpenHousesPage() {
 
   const f = (key: keyof typeof form, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
+  function formatTime(hhmm: string): string {
+    if (!hhmm) return '—';
+    const [h, m] = hhmm.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const hour = h % 12 || 12;
+    return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -145,7 +151,8 @@ export default function OpenHousesPage() {
                 <Th label="Address" k="address" />
                 <Th label="Neighborhood" k="neighborhood" />
                 <Th label="City" k="city" />
-                <Th label="Time" k="time_of_day" />
+                <Th label="Start" k="start_time" />
+                <Th label="End" k="end_time" />
                 <Th label="Total" k="total_attendees" />
                 <Th label="Neighbors" k="neighbors" />
                 <Th label="Rep. Buyers" k="represented_buyers" />
@@ -155,7 +162,7 @@ export default function OpenHousesPage() {
             </thead>
             <tbody>
               {sorted.length === 0 && (
-                <tr><td colSpan={10} className="text-center py-12 text-navy-500">No open houses logged yet.</td></tr>
+                <tr><td colSpan={11} className="text-center py-12 text-navy-500">No open houses logged yet.</td></tr>
               )}
               {sorted.map((h) => (
                 <tr key={h.id} className="border-b border-navy-750 hover:bg-navy-750/50 transition-colors">
@@ -163,7 +170,8 @@ export default function OpenHousesPage() {
                   <td className="px-4 py-3 text-navy-300 max-w-xs truncate">{h.address}</td>
                   <td className="px-4 py-3 text-navy-300">{h.neighborhood || '—'}</td>
                   <td className="px-4 py-3 text-navy-300">{h.city}</td>
-                  <td className="px-4 py-3 text-navy-300 whitespace-nowrap text-xs">{h.time_of_day || '—'}</td>
+                  <td className="px-4 py-3 text-navy-300 whitespace-nowrap text-xs">{h.start_time ? formatTime(h.start_time) : '—'}</td>
+                  <td className="px-4 py-3 text-navy-300 whitespace-nowrap text-xs">{h.end_time ? formatTime(h.end_time) : '—'}{h.summary_sent_at ? ' ✓' : ''}</td>
                   <td className="px-4 py-3 font-semibold text-white text-center">{h.total_attendees}</td>
                   <td className="px-4 py-3 text-blue-300 text-center">{h.neighbors}</td>
                   <td className="px-4 py-3 text-purple-300 text-center">{h.represented_buyers}</td>
@@ -212,15 +220,23 @@ export default function OpenHousesPage() {
               </div>
             ))}
             <div>
-              <label className="block text-xs font-medium text-navy-400 mb-1.5">Time of Day</label>
-              <select
-                value={form.time_of_day}
-                onChange={(e) => f('time_of_day', e.target.value)}
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">Start Time</label>
+              <input
+                type="time"
+                value={form.start_time}
+                onChange={(e) => f('start_time', e.target.value)}
                 className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-500 text-sm"
-              >
-                <option value="">— Select —</option>
-                {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">End Time <span className="text-gold-400">*</span></label>
+              <input
+                type="time"
+                value={form.end_time}
+                onChange={(e) => f('end_time', e.target.value)}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-500 text-sm"
+              />
+              <p className="text-xs text-navy-500 mt-1">Summary email sends automatically when this time passes.</p>
             </div>
             {(['total_attendees', 'neighbors', 'represented_buyers', 'unrepresented_buyers'] as const).map((key) => (
               <div key={key}>

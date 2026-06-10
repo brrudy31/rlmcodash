@@ -127,10 +127,19 @@ let _migrated = false;
 export async function ensureSchema(): Promise<void> {
   if (_migrated) return;
   const db = getDb();
-  // Run each statement individually (libsql doesn't support multi-statement exec)
+  // Run each CREATE TABLE statement
   const statements = SCHEMA.split(';').map((s) => s.trim()).filter((s) => s.length > 0);
   for (const sql of statements) {
     await db.execute(sql);
+  }
+  // Run migrations for new columns (safe to re-run — errors are caught)
+  const migrations = [
+    'ALTER TABLE open_houses ADD COLUMN start_time TEXT',
+    'ALTER TABLE open_houses ADD COLUMN end_time TEXT',
+    'ALTER TABLE open_houses ADD COLUMN summary_sent_at TEXT',
+  ];
+  for (const sql of migrations) {
+    try { await db.execute(sql); } catch { /* column already exists */ }
   }
   _migrated = true;
 }

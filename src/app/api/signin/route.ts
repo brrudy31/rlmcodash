@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
       if (hasHomeToBuy) tags.push('Looking To Buy');
       if (hasHomeToSell) tags.push('Has Home To Sell');
       if (!isPreApproved) tags.push('Not Pre-Approved');
-      if (workingWithAgent) tags.push('Working With Agent');
+      if (workingWithAgent) {
+        tags.push('Working With Agent');
+        tags.push('Represented Buyer');
+      }
 
       const agentLines: string[] = [];
       if (workingWithAgent) {
