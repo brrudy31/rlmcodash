@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -39,6 +39,7 @@ export default function OpenHousesPage() {
   const [qrHouse, setQrHouse] = useState<OpenHouse | null>(null);
   const [signinsHouse, setSigninsHouse] = useState<OpenHouse | null>(null);
   const [signins, setSignins] = useState<SignIn[]>([]);
+  const [sendingSummary, setSendingSummary] = useState<number | null>(null);
 
   async function load() {
     const data = await fetch('/api/open-houses').then((r) => r.json());
@@ -103,6 +104,18 @@ export default function OpenHousesPage() {
     const data = await fetch(`/api/open-houses/${h.id}/signins`).then((r) => r.json());
     setSignins(data);
     setSigninsHouse(h);
+  }
+
+  async function sendSummary(h: OpenHouse) {
+    setSendingSummary(h.id);
+    const res = await fetch(`/api/open-houses/${h.id}/send-summary`, { method: 'POST' });
+    setSendingSummary(null);
+    if (res.ok) {
+      alert(`Summary email sent for ${h.address}!`);
+      load();
+    } else {
+      alert('Failed to send summary. Make sure RESEND is configured.');
+    }
   }
 
   function SortIcon({ k }: { k: SortKey }) {
@@ -183,6 +196,14 @@ export default function OpenHousesPage() {
                       </button>
                       <button onClick={() => openSignins(h)} title="View sign-ins" className="p-1.5 text-navy-400 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-colors">
                         <Users className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => sendSummary(h)}
+                        disabled={sendingSummary === h.id}
+                        title={h.summary_sent_at ? 'Resend summary email' : 'Send summary email'}
+                        className={`p-1.5 rounded transition-colors ${h.summary_sent_at ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10' : 'text-navy-400 hover:text-yellow-400 hover:bg-yellow-400/10'} disabled:opacity-40`}
+                      >
+                        <Mail className="w-4 h-4" />
                       </button>
                       <button onClick={() => openEdit(h)} className="p-1.5 text-navy-400 hover:text-gold-400 hover:bg-navy-700 rounded transition-colors">
                         <Pencil className="w-4 h-4" />
