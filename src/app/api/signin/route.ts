@@ -29,6 +29,30 @@ export async function POST(req: NextRequest) {
     args: [openHouseId, firstName.trim(), lastName.trim(), phone.trim(), email.trim(), hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null],
   });
 
+  // Upsert into contacts — insert new or update phone/agent info if email already exists
+  await db.execute({
+    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage)
+          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?)
+          ON CONFLICT(email) DO UPDATE SET
+            phone = COALESCE(excluded.phone, phone),
+            source = COALESCE(source, 'Open House'),
+            open_house_id = COALESCE(excluded.open_house_id, open_house_id),
+            agent_name = COALESCE(excluded.agent_name, agent_name),
+            agent_phone = COALESCE(excluded.agent_phone, agent_phone),
+            agent_email = COALESCE(excluded.agent_email, agent_email),
+            agent_brokerage = COALESCE(excluded.agent_brokerage, agent_brokerage)`,
+    args: [
+      `${firstName.trim()} ${lastName.trim()}`,
+      email.trim().toLowerCase(),
+      phone.trim(),
+      openHouseId,
+      agentName?.trim() || null,
+      agentPhone?.trim() || null,
+      agentEmail?.trim() || null,
+      agentBrokerage?.trim() || null,
+    ],
+  });
+
   let ghlContactId: string | null = null;
   if (GHL_API_KEY && GHL_LOCATION_ID) {
     try {

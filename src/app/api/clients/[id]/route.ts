@@ -3,14 +3,14 @@ import { getDb, ensureSchema } from '@/lib/db';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { name, email } = await request.json();
+  const { name, email, phone } = await request.json();
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
   }
   await ensureSchema();
   const db = getDb();
   try {
-    await db.execute({ sql: 'UPDATE clients SET name = ?, email = ? WHERE id = ?', args: [name.trim(), email.trim().toLowerCase(), id] });
+    await db.execute({ sql: 'UPDATE clients SET name = ?, email = ?, phone = ? WHERE id = ?', args: [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, id] });
     const { rows } = await db.execute({ sql: 'SELECT * FROM clients WHERE id = ?', args: [id] });
     if (!rows[0]) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     return NextResponse.json(rows[0]);

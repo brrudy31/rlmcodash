@@ -20,7 +20,7 @@ import clsx from 'clsx';
 
 const nav = [
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Clients', href: '/dashboard/clients', icon: Users },
+  { label: 'Contacts', href: '/dashboard/clients', icon: Users },
   { label: 'Vendor Lists', href: '/dashboard/vendors', icon: ListChecks },
   { label: 'Send Emails', href: '/dashboard/email', icon: Send },
   { label: 'Email Tracking', href: '/dashboard/tracking', icon: BarChart2 },

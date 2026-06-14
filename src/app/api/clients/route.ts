@@ -9,7 +9,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const { name, email } = await request.json();
+  const { name, email, phone } = await request.json();
   if (!name?.trim() || !email?.trim()) {
     return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
   }
@@ -17,14 +17,14 @@ export async function POST(request: NextRequest) {
   const db = getDb();
   try {
     const result = await db.execute({
-      sql: 'INSERT INTO clients (name, email) VALUES (?, ?)',
-      args: [name.trim(), email.trim().toLowerCase()],
+      sql: 'INSERT INTO clients (name, email, phone) VALUES (?, ?, ?)',
+      args: [name.trim(), email.trim().toLowerCase(), phone?.trim() || null],
     });
     const { rows } = await db.execute({ sql: 'SELECT * FROM clients WHERE id = ?', args: [Number(result.lastInsertRowid)] });
     return NextResponse.json(rows[0], { status: 201 });
   } catch (err: unknown) {
     if (err instanceof Error && err.message.includes('UNIQUE')) {
-      return NextResponse.json({ error: 'A client with this email already exists' }, { status: 409 });
+      return NextResponse.json({ error: 'A contact with this email already exists' }, { status: 409 });
     }
     throw err;
   }
