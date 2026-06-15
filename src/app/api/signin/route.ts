@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
 
   // Upsert into contacts — insert new or update phone/agent info if email already exists
   await db.execute({
-    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage)
-          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?)
+    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage, working_with_agent)
+          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             phone = COALESCE(excluded.phone, phone),
             source = COALESCE(source, 'Open House'),
@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
             agent_name = COALESCE(excluded.agent_name, agent_name),
             agent_phone = COALESCE(excluded.agent_phone, agent_phone),
             agent_email = COALESCE(excluded.agent_email, agent_email),
-            agent_brokerage = COALESCE(excluded.agent_brokerage, agent_brokerage)`,
+            agent_brokerage = COALESCE(excluded.agent_brokerage, agent_brokerage),
+            working_with_agent = COALESCE(excluded.working_with_agent, working_with_agent)`,
     args: [
       `${firstName.trim()} ${lastName.trim()}`,
       email.trim().toLowerCase(),
@@ -50,7 +51,18 @@ export async function POST(req: NextRequest) {
       agentPhone?.trim() || null,
       agentEmail?.trim() || null,
       agentBrokerage?.trim() || null,
+      workingWithAgent ? 1 : 0,
     ],
+  });
+
+  // Auto-update open house represented/unrepresented counts from actual sign-in data
+  await db.execute({
+    sql: `UPDATE open_houses SET
+            represented_buyers = (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = ? AND working_with_agent = 1),
+            unrepresented_buyers = (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = ? AND working_with_agent = 0),
+            total_attendees = (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = ?)
+          WHERE id = ?`,
+    args: [openHouseId, openHouseId, openHouseId, openHouseId],
   });
 
   let ghlContactId: string | null = null;

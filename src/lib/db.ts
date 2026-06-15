@@ -144,6 +144,7 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE clients ADD COLUMN agent_phone TEXT',
     'ALTER TABLE clients ADD COLUMN agent_email TEXT',
     'ALTER TABLE clients ADD COLUMN agent_brokerage TEXT',
+    'ALTER TABLE clients ADD COLUMN working_with_agent INTEGER NOT NULL DEFAULT 0',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }

@@ -46,6 +46,10 @@ export default function SignInPage() {
       setError('Please fill in all fields.');
       return;
     }
+    if (form.workingWithAgent && !form.agentName.trim()) {
+      setError("Please enter your agent's name.");
+      return;
+    }
     setLoading(true);
     setError('');
     const res = await fetch('/api/signin', {
@@ -123,7 +127,7 @@ export default function SignInPage() {
 
                 {name === 'workingWithAgent' && form.workingWithAgent && (
                   <div className="mt-3 ml-8 space-y-2">
-                    <p className="text-xs text-gray-400 mb-2">Agent&apos;s info (optional)</p>
+                    <p className="text-xs text-gray-400 mb-2">Agent&apos;s info <span className="text-black font-semibold">(required)</span></p>
                     <div className="grid grid-cols-2 gap-2">
                       <input name="agentName" placeholder="Agent Name" value={form.agentName} onChange={handleText} className={agentInputClass} />
                       <input name="agentBrokerage" placeholder="Brokerage" value={form.agentBrokerage} onChange={handleText} className={agentInputClass} />
