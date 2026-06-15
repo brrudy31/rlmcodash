@@ -114,7 +114,8 @@ export default function OpenHousesPage() {
       alert(`Summary email sent for ${h.address}!`);
       load();
     } else {
-      alert('Failed to send summary. Make sure RESEND is configured.');
+      const data = await res.json().catch(() => ({}));
+      alert(`Failed to send summary: ${data.error || 'Unknown error'}`);
     }
   }
 
