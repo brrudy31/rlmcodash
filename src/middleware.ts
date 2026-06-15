@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   '/api/email/webhook',
   '/api/signin',
   '/signin',
+  '/api/debug-env',
 ];
 
 export async function middleware(request: NextRequest) {
