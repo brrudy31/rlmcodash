@@ -4,6 +4,18 @@ import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp } from 'lucide-react';
 import Modal from '@/components/Modal';
 
+const STATUS_OPTIONS = [
+  { value: '', label: 'No Status', color: 'text-navy-400' },
+  { value: 'converted_buyer', label: 'Converted — Buyer', color: 'text-green-400' },
+  { value: 'converted_seller', label: 'Converted — Seller', color: 'text-green-400' },
+  { value: 'in_progress', label: 'In Progress', color: 'text-blue-400' },
+  { value: 'lost', label: 'Lost', color: 'text-red-400' },
+];
+
+function statusLabel(val: string | null) {
+  return STATUS_OPTIONS.find((s) => s.value === (val ?? '')) ?? STATUS_OPTIONS[0];
+}
+
 interface Contact {
   id: number;
   name: string;
@@ -12,6 +24,7 @@ interface Contact {
   source: string | null;
   open_house_id: number | null;
   working_with_agent: number | null;
+  status: string | null;
   agent_name: string | null;
   agent_phone: string | null;
   agent_email: string | null;
@@ -89,10 +102,20 @@ export default function ContactsPage() {
     setDeleteId(null); load();
   }
 
+  async function updateStatus(id: number, status: string) {
+    await fetch(`/api/clients/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    load();
+  }
+
   function ContactCard({ c }: { c: Contact }) {
     const hasAgent = c.agent_name || c.agent_phone || c.agent_email || c.agent_brokerage;
     const isExpanded = expanded === c.id;
     const oh = c.open_house_id ? ohMap[c.open_house_id] : null;
+    const st = statusLabel(c.status);
 
     return (
       <div className="hover:bg-navy-750/40 transition-colors">
@@ -119,7 +142,16 @@ export default function ContactsPage() {
               {c.phone && <p className="text-navy-400 text-xs">{c.phone}</p>}
             </div>
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <select
+              value={c.status ?? ''}
+              onChange={(e) => updateStatus(c.id, e.target.value)}
+              className={`text-xs bg-navy-700 border border-navy-600 rounded-lg px-2 py-1 focus:outline-none focus:border-gold-500 cursor-pointer ${st.color}`}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
             {hasAgent && (
               <button
                 onClick={() => setExpanded(isExpanded ? null : c.id)}

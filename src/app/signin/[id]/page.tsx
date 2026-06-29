@@ -42,13 +42,20 @@ export default function SignInPage() {
   }
 
   async function handleSubmit() {
-    if (!form.firstName.trim() || !form.lastName.trim() || !form.phone.trim() || !form.email.trim()) {
-      setError('Please fill in all fields.');
+    if (!form.firstName.trim() || !form.lastName.trim()) {
+      setError('Please enter your first and last name.');
       return;
     }
-    if (form.workingWithAgent && !form.agentName.trim()) {
-      setError("Please enter your agent's name.");
-      return;
+    if (form.workingWithAgent) {
+      if (!form.agentName.trim() || !form.agentPhone.trim() || !form.agentEmail.trim()) {
+        setError("Please enter your agent's name, phone, and email.");
+        return;
+      }
+    } else {
+      if (!form.phone.trim() || !form.email.trim()) {
+        setError('Please enter your phone number and email.');
+        return;
+      }
     }
     setLoading(true);
     setError('');
@@ -102,8 +109,12 @@ export default function SignInPage() {
             <input name="firstName" placeholder="First Name" value={form.firstName} onChange={handleText} className={inputClass} />
             <input name="lastName" placeholder="Last Name" value={form.lastName} onChange={handleText} className={inputClass} />
           </div>
-          <input name="phone" placeholder="Phone Number" type="tel" value={form.phone} onChange={handleText} className={inputClass} />
-          <input name="email" placeholder="Email Address" type="email" value={form.email} onChange={handleText} className={inputClass} />
+          {!form.workingWithAgent && (
+            <>
+              <input name="phone" placeholder="Phone Number" type="tel" value={form.phone} onChange={handleText} className={inputClass} />
+              <input name="email" placeholder="Email Address" type="email" value={form.email} onChange={handleText} className={inputClass} />
+            </>
+          )}
 
           <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Quick questions</p>
@@ -129,11 +140,11 @@ export default function SignInPage() {
                   <div className="mt-3 ml-8 space-y-2">
                     <p className="text-xs text-gray-400 mb-2">Agent&apos;s info <span className="text-black font-semibold">(required)</span></p>
                     <div className="grid grid-cols-2 gap-2">
-                      <input name="agentName" placeholder="Agent Name" value={form.agentName} onChange={handleText} className={agentInputClass} />
+                      <input name="agentName" placeholder="Agent Name *" value={form.agentName} onChange={handleText} className={agentInputClass} />
                       <input name="agentBrokerage" placeholder="Brokerage" value={form.agentBrokerage} onChange={handleText} className={agentInputClass} />
                     </div>
-                    <input name="agentPhone" placeholder="Agent Phone" type="tel" value={form.agentPhone} onChange={handleText} className={agentInputClass} />
-                    <input name="agentEmail" placeholder="Agent Email" type="email" value={form.agentEmail} onChange={handleText} className={agentInputClass} />
+                    <input name="agentPhone" placeholder="Agent Phone *" type="tel" value={form.agentPhone} onChange={handleText} className={agentInputClass} />
+                    <input name="agentEmail" placeholder="Agent Email *" type="email" value={form.agentEmail} onChange={handleText} className={agentInputClass} />
                   </div>
                 )}
               </div>

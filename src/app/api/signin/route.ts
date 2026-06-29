@@ -8,8 +8,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { openHouseId, firstName, lastName, phone, email, hasHomeToBuy, hasHomeToSell, isPreApproved, workingWithAgent, agentName, agentPhone, agentEmail, agentBrokerage } = body;
 
-  if (!openHouseId || !firstName?.trim() || !lastName?.trim() || !phone?.trim() || !email?.trim()) {
-    return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
+  if (!openHouseId || !firstName?.trim() || !lastName?.trim()) {
+    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
+  }
+  if (!workingWithAgent && (!phone?.trim() || !email?.trim())) {
+    return NextResponse.json({ error: 'Phone and email are required' }, { status: 400 });
   }
 
   await ensureSchema();

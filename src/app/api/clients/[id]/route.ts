@@ -22,6 +22,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { status } = await request.json();
+  await ensureSchema();
+  const db = getDb();
+  await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ?', args: [status || null, id] });
+  return NextResponse.json({ success: true });
+}
+
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await ensureSchema();
