@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { getDb, ensureSchema } from '@/lib/db';
 
@@ -99,15 +99,15 @@ function buildSummaryEmail(house: any, signins: any[]): string {
   const unrepresentedSignins = signins.filter((s) => !s.working_with_agent);
 
   const agentSection = representedSignins.length > 0 ? `
-    <h2 style="margin:28px 0 12px;color:#1a1a2e;font-size:16px;border-bottom:2px solid #c9a84c;padding-bottom:6px;">
+    <h2 style="margin:28px 0 12px;color:#000000;font-size:16px;border-bottom:2px solid #000000;padding-bottom:6px;">
       Represented Buyers — Agent Info (${representedSignins.length})
     </h2>
     ${representedSignins.map((s) => `
-      <div style="background:#fffbf0;border:1px solid #e8d9a0;border-radius:8px;padding:14px 16px;margin-bottom:10px;">
-        <p style="margin:0 0 4px;font-weight:700;color:#1a1a2e;font-size:15px;">${esc(s.first_name)} ${esc(s.last_name)}</p>
+      <div style="background:#f5f5f5;border:1px solid #dddddd;border-radius:8px;padding:14px 16px;margin-bottom:10px;">
+        <p style="margin:0 0 4px;font-weight:700;color:#000000;font-size:15px;">${esc(s.first_name)} ${esc(s.last_name)}</p>
         <p style="margin:0 0 8px;color:#555;font-size:13px;">${esc(s.phone)} · ${esc(s.email)}</p>
         ${s.agent_name || s.agent_brokerage || s.agent_phone || s.agent_email ? `
-          <div style="border-left:3px solid #c9a84c;padding-left:10px;margin-top:8px;">
+          <div style="border-left:3px solid #000000;padding-left:10px;margin-top:8px;">
             <p style="margin:0 0 2px;font-size:12px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:1px;">Their Agent</p>
             ${s.agent_name ? `<p style="margin:2px 0;color:#333;font-size:13px;font-weight:600;">${esc(s.agent_name)}${s.agent_brokerage ? ` · ${esc(s.agent_brokerage)}` : ''}</p>` : ''}
             ${s.agent_phone ? `<p style="margin:2px 0;color:#555;font-size:13px;">${esc(s.agent_phone)}</p>` : ''}
@@ -116,12 +116,12 @@ function buildSummaryEmail(house: any, signins: any[]): string {
       </div>`).join('')}` : '';
 
   const unrepresentedSection = unrepresentedSignins.length > 0 ? `
-    <h2 style="margin:28px 0 12px;color:#1a1a2e;font-size:16px;border-bottom:2px solid #1e3d70;padding-bottom:6px;">
+    <h2 style="margin:28px 0 12px;color:#000000;font-size:16px;border-bottom:2px solid #333333;padding-bottom:6px;">
       Unrepresented Buyers (${unrepresentedSignins.length})
     </h2>
     ${unrepresentedSignins.map((s) => `
       <div style="background:#f8f9fb;border:1px solid #e0e0e0;border-radius:8px;padding:14px 16px;margin-bottom:10px;">
-        <p style="margin:0 0 4px;font-weight:700;color:#1a1a2e;font-size:15px;">${esc(s.first_name)} ${esc(s.last_name)}</p>
+        <p style="margin:0 0 4px;font-weight:700;color:#000000;font-size:15px;">${esc(s.first_name)} ${esc(s.last_name)}</p>
         <p style="margin:0 0 4px;color:#555;font-size:13px;">${esc(s.phone)} · ${esc(s.email)}</p>
         <p style="margin:4px 0 0;font-size:12px;color:#888;">
           ${s.has_home_to_buy ? '🏠 Looking to buy &nbsp;' : ''}${s.has_home_to_sell ? '📋 Has home to sell &nbsp;' : ''}${s.is_pre_approved ? '✅ Pre-approved' : ''}
@@ -136,30 +136,30 @@ function buildSummaryEmail(house: any, signins: any[]): string {
   <tr><td align="center">
     <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
       <tr>
-        <td style="background:linear-gradient(135deg,#0a1628,#162d57);padding:28px 36px;">
-          <h1 style="margin:0;color:#c9a84c;font-size:22px;letter-spacing:4px;">RLM&amp;CO</h1>
-          <p style="margin:6px 0 0;color:#8ba3c0;font-size:13px;">Open House Summary</p>
+        <td style="background:#000000;padding:28px 36px;">
+          <h1 style="margin:0;color:#ffffff;font-size:22px;letter-spacing:4px;">RLM&amp;CO</h1>
+          <p style="margin:6px 0 0;color:#aaaaaa;font-size:13px;">Open House Summary</p>
         </td>
       </tr>
       <tr>
         <td style="padding:28px 36px;">
-          <h2 style="margin:0 0 4px;color:#1a1a2e;font-size:18px;">${esc(String(house.address))}</h2>
+          <h2 style="margin:0 0 4px;color:#000000;font-size:18px;">${esc(String(house.address))}</h2>
           <p style="margin:0 0 20px;color:#888;font-size:13px;">
             ${new Date(String(house.date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
             ${house.start_time ? ` · ${formatTime(String(house.start_time))}` : ''}
             ${house.end_time ? ` – ${formatTime(String(house.end_time))}` : ''}
           </p>
           <div style="display:flex;gap:16px;margin-bottom:24px;">
-            <div style="background:#f0f4ff;border-radius:8px;padding:12px 20px;text-align:center;">
-              <p style="margin:0;font-size:24px;font-weight:700;color:#1e3d70;">${signins.length}</p>
+            <div style="background:#f5f5f5;border-radius:8px;padding:12px 20px;text-align:center;">
+              <p style="margin:0;font-size:24px;font-weight:700;color:#111111;">${signins.length}</p>
               <p style="margin:2px 0 0;font-size:11px;color:#888;text-transform:uppercase;">Total Sign-Ins</p>
             </div>
-            <div style="background:#fffbf0;border-radius:8px;padding:12px 20px;text-align:center;">
-              <p style="margin:0;font-size:24px;font-weight:700;color:#c9a84c;">${representedSignins.length}</p>
+            <div style="background:#f5f5f5;border-radius:8px;padding:12px 20px;text-align:center;">
+              <p style="margin:0;font-size:24px;font-weight:700;color:#ffffff;">${representedSignins.length}</p>
               <p style="margin:2px 0 0;font-size:11px;color:#888;text-transform:uppercase;">Represented</p>
             </div>
-            <div style="background:#f0fff4;border-radius:8px;padding:12px 20px;text-align:center;">
-              <p style="margin:0;font-size:24px;font-weight:700;color:#2d7a4f;">${unrepresentedSignins.length}</p>
+            <div style="background:#f5f5f5;border-radius:8px;padding:12px 20px;text-align:center;">
+              <p style="margin:0;font-size:24px;font-weight:700;color:#333333;">${unrepresentedSignins.length}</p>
               <p style="margin:2px 0 0;font-size:11px;color:#888;text-transform:uppercase;">Unrepresented</p>
             </div>
           </div>

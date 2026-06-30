@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import {
@@ -290,10 +290,10 @@ export default function MarketPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
-                    { icon: DollarSign, label: 'Median Price', value: fmt$(s.median_price), color: 'text-green-400' },
-                    { icon: Home, label: '$/Sq Ft', value: s.price_per_sqft ? `$${fmtN(s.price_per_sqft, 0)}` : '—', color: 'text-blue-400' },
-                    { icon: Clock, label: 'Avg DOM', value: s.avg_days_on_market ? `${fmtN(s.avg_days_on_market, 0)}d` : '—', color: 'text-yellow-400' },
-                    { icon: BarChart2, label: 'Homes Sold', value: fmtN(s.homes_sold), color: 'text-purple-400' },
+                    { icon: DollarSign, label: 'Median Price', value: fmt$(s.median_price), color: 'text-white' },
+                    { icon: Home, label: '$/Sq Ft', value: s.price_per_sqft ? `$${fmtN(s.price_per_sqft, 0)}` : '—', color: 'text-navy-300' },
+                    { icon: Clock, label: 'Avg DOM', value: s.avg_days_on_market ? `${fmtN(s.avg_days_on_market, 0)}d` : '—', color: 'text-white' },
+                    { icon: BarChart2, label: 'Homes Sold', value: fmtN(s.homes_sold), color: 'text-navy-300' },
                   ].map(({ icon: Icon, label, value, color }) => (
                     <div key={label} className="bg-navy-750/50 rounded-lg p-2.5">
                       <div className="flex items-center gap-1 mb-1">
@@ -421,7 +421,7 @@ export default function MarketPage() {
               </div>
 
               {emailResult && (
-                <p className={`text-sm font-medium ${emailResult.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>{emailResult}</p>
+                <p className={`text-sm font-medium ${emailResult.startsWith('✅') ? 'text-white' : 'text-red-400'}`}>{emailResult}</p>
               )}
             </div>
             <div className="px-6 py-4 border-t border-navy-700 flex gap-3">

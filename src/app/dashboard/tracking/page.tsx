@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Mail, Eye, UserX, ChevronDown, ChevronUp } from 'lucide-react';
@@ -72,11 +72,11 @@ export default function TrackingPage() {
                     </div>
                     <div className="flex items-center gap-4 flex-shrink-0">
                       <div className="flex items-center gap-1.5 text-sm text-navy-300">
-                        <Mail className="w-4 h-4 text-blue-400" />
+                        <Mail className="w-4 h-4 text-navy-300" />
                         <span className="font-medium text-white">{c.total_sent}</span> sent
                       </div>
                       <div className="flex items-center gap-1.5 text-sm text-navy-300">
-                        <Eye className="w-4 h-4 text-green-400" />
+                        <Eye className="w-4 h-4 text-white" />
                         <span className="font-medium text-white">{c.total_opened}</span>
                         <span className="text-navy-500 text-xs">({openRate}%)</span>
                       </div>
@@ -112,7 +112,7 @@ export default function TrackingPage() {
                           <td className="px-4 py-3 text-navy-300">{s.client_email}</td>
                           <td className="px-4 py-3">
                             {s.opened_at ? (
-                              <span className="text-green-400 text-xs flex items-center gap-1">
+                              <span className="text-white text-xs flex items-center gap-1">
                                 <Eye className="w-3 h-3" />
                                 {new Date(s.opened_at).toLocaleDateString()}
                               </span>

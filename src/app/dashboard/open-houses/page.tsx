@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail } from 'lucide-react';
@@ -187,22 +187,22 @@ export default function OpenHousesPage() {
                   <td className="px-4 py-3 text-navy-300 whitespace-nowrap text-xs">{h.start_time ? formatTime(h.start_time) : '—'}</td>
                   <td className="px-4 py-3 text-navy-300 whitespace-nowrap text-xs">{h.end_time ? formatTime(h.end_time) : '—'}{h.summary_sent_at ? ' ✓' : ''}</td>
                   <td className="px-4 py-3 font-semibold text-white text-center">{h.total_attendees}</td>
-                  <td className="px-4 py-3 text-blue-300 text-center">{h.neighbors}</td>
-                  <td className="px-4 py-3 text-purple-300 text-center">{h.represented_buyers}</td>
+                  <td className="px-4 py-3 text-navy-300 text-center">{h.neighbors}</td>
+                  <td className="px-4 py-3 text-navy-300 text-center">{h.represented_buyers}</td>
                   <td className="px-4 py-3 text-gold-400 text-center font-medium">{h.unrepresented_buyers}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => setQrHouse(h)} title="Sign-in QR code" className="p-1.5 text-navy-400 hover:text-gold-400 hover:bg-navy-700 rounded transition-colors">
                         <QrCode className="w-4 h-4" />
                       </button>
-                      <button onClick={() => openSignins(h)} title="View sign-ins" className="p-1.5 text-navy-400 hover:text-blue-400 hover:bg-blue-400/10 rounded transition-colors">
+                      <button onClick={() => openSignins(h)} title="View sign-ins" className="p-1.5 text-navy-400 hover:text-navy-300 hover:bg-navy-700 rounded transition-colors">
                         <Users className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => sendSummary(h)}
                         disabled={sendingSummary === h.id}
                         title={h.summary_sent_at ? 'Resend summary email' : 'Send summary email'}
-                        className={`p-1.5 rounded transition-colors ${h.summary_sent_at ? 'text-green-400 hover:text-green-300 hover:bg-green-400/10' : 'text-navy-400 hover:text-yellow-400 hover:bg-yellow-400/10'} disabled:opacity-40`}
+                        className={`p-1.5 rounded transition-colors ${h.summary_sent_at ? 'text-white hover:text-navy-300 hover:bg-navy-700' : 'text-navy-400 hover:text-white hover:bg-navy-700'} disabled:opacity-40`}
                       >
                         <Mail className="w-4 h-4" />
                       </button>
@@ -347,16 +347,16 @@ export default function OpenHousesPage() {
                       <p className="text-navy-400 text-xs mt-0.5">{s.phone} · {s.email}</p>
                     </div>
                     <div className="flex gap-1 flex-wrap justify-end">
-                      {Boolean(s.has_home_to_buy) && <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">Buying</span>}
-                      {Boolean(s.has_home_to_sell) && <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">Selling</span>}
-                      {Boolean(s.is_pre_approved) && <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">Pre-Approved</span>}
-                      {Boolean(s.working_with_agent) && <span className="text-xs bg-yellow-500/20 text-yellow-300 px-2 py-0.5 rounded-full">Has Agent</span>}
+                      {Boolean(s.has_home_to_buy) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Buying</span>}
+                      {Boolean(s.has_home_to_sell) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Selling</span>}
+                      {Boolean(s.is_pre_approved) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Pre-Approved</span>}
+                      {Boolean(s.working_with_agent) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Has Agent</span>}
                       {s.ghl_contact_id && <span className="text-xs bg-gold-500/20 text-gold-400 px-2 py-0.5 rounded-full">In GHL</span>}
                     </div>
                   </div>
                   {Boolean(s.working_with_agent) && (s.agent_name || s.agent_brokerage || s.agent_phone || s.agent_email) && (
-                    <div className="mt-2 pl-3 border-l-2 border-yellow-500/40 space-y-0.5">
-                      {s.agent_name && <p className="text-yellow-300 text-xs font-medium">{s.agent_name}{s.agent_brokerage ? ` · ${s.agent_brokerage}` : ''}</p>}
+                    <div className="mt-2 pl-3 border-l-2 border-navy-500 space-y-0.5">
+                      {s.agent_name && <p className="text-navy-300 text-xs font-medium">{s.agent_name}{s.agent_brokerage ? ` · ${s.agent_brokerage}` : ''}</p>}
                       {s.agent_phone && <p className="text-navy-400 text-xs">{s.agent_phone}</p>}
                       {s.agent_email && <p className="text-navy-400 text-xs">{s.agent_email}</p>}
                     </div>

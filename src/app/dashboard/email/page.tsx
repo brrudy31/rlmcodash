@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Send, CheckSquare, Square, AlertCircle, CheckCircle2 } from 'lucide-react';
@@ -79,7 +79,7 @@ export default function EmailPage() {
       </div>
 
       {result && (
-        <div className={`flex items-start gap-3 p-4 rounded-xl border mb-6 text-sm ${result.success ? 'bg-green-400/10 border-green-400/30 text-green-300' : 'bg-red-400/10 border-red-400/30 text-red-300'}`}>
+        <div className={`flex items-start gap-3 p-4 rounded-xl border mb-6 text-sm ${result.success ? 'bg-navy-700 border-navy-500 text-navy-300' : 'bg-red-400/10 border-red-400/30 text-red-300'}`}>
           {result.success ? <CheckCircle2 className="w-5 h-5 mt-0.5 flex-shrink-0" /> : <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />}
           {result.message}
         </div>

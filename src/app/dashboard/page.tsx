@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Users, ListChecks, Send, Home, DoorOpen, TrendingUp, DollarSign, Clock, BarChart2 } from 'lucide-react';
@@ -60,10 +60,10 @@ export default function DashboardPage() {
   }, []);
 
   const cards = [
-    { label: 'Total Clients', value: stats.clients, icon: Users, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-    { label: 'Vendor Lists', value: stats.vendorLists, icon: ListChecks, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+    { label: 'Total Clients', value: stats.clients, icon: Users, color: 'text-navy-300', bg: 'bg-navy-700' },
+    { label: 'Vendor Lists', value: stats.vendorLists, icon: ListChecks, color: 'text-navy-300', bg: 'bg-navy-700' },
     { label: 'Emails Sent', value: stats.emailsSent, icon: Send, color: 'text-gold-400', bg: 'bg-gold-400/10' },
-    { label: 'Open Houses', value: stats.openHouses, icon: Home, color: 'text-green-400', bg: 'bg-green-400/10' },
+    { label: 'Open Houses', value: stats.openHouses, icon: Home, color: 'text-white', bg: 'bg-navy-700' },
     { label: 'Doors Knocked', value: stats.doorsKnocked, icon: DoorOpen, color: 'text-orange-400', bg: 'bg-orange-400/10' },
   ];
 
@@ -119,10 +119,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
-                    { icon: DollarSign, label: 'Median Price', value: fmt$(s.median_price), color: 'text-green-400' },
-                    { icon: Home, label: '$/Sq Ft', value: s.price_per_sqft ? `$${fmtN(s.price_per_sqft, 0)}` : '—', color: 'text-blue-400' },
-                    { icon: Clock, label: 'Avg DOM', value: s.avg_days_on_market ? `${fmtN(s.avg_days_on_market, 0)}d` : '—', color: 'text-yellow-400' },
-                    { icon: BarChart2, label: 'Homes Sold', value: fmtN(s.homes_sold), color: 'text-purple-400' },
+                    { icon: DollarSign, label: 'Median Price', value: fmt$(s.median_price), color: 'text-white' },
+                    { icon: Home, label: '$/Sq Ft', value: s.price_per_sqft ? `$${fmtN(s.price_per_sqft, 0)}` : '—', color: 'text-navy-300' },
+                    { icon: Clock, label: 'Avg DOM', value: s.avg_days_on_market ? `${fmtN(s.avg_days_on_market, 0)}d` : '—', color: 'text-white' },
+                    { icon: BarChart2, label: 'Homes Sold', value: fmtN(s.homes_sold), color: 'text-navy-300' },
                   ].map(({ icon: Icon, label, value, color }) => (
                     <div key={label} className="bg-navy-750/50 rounded-lg p-3">
                       <div className="flex items-center gap-1 mb-1">

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { DoorOpen, Plus, Trash2, HandshakeIcon, Mailbox, FileText, ClipboardList } from 'lucide-react';
@@ -106,10 +106,10 @@ export default function DoorKnockingPage() {
       {sessions.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 mb-6">
           {[
-            { label: 'Total Doors', value: totals.doors, icon: DoorOpen, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-            { label: 'Answered', value: `${totals.answered} (${answerRate}%)`, icon: HandshakeIcon, color: 'text-green-400', bg: 'bg-green-400/10' },
-            { label: 'Left at Door', value: totals.left, icon: Mailbox, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-            { label: 'Flyers Given', value: totals.flyer, icon: FileText, color: 'text-purple-400', bg: 'bg-purple-400/10' },
+            { label: 'Total Doors', value: totals.doors, icon: DoorOpen, color: 'text-navy-300', bg: 'bg-navy-700' },
+            { label: 'Answered', value: `${totals.answered} (${answerRate}%)`, icon: HandshakeIcon, color: 'text-white', bg: 'bg-navy-700' },
+            { label: 'Left at Door', value: totals.left, icon: Mailbox, color: 'text-white', bg: 'bg-navy-700' },
+            { label: 'Flyers Given', value: totals.flyer, icon: FileText, color: 'text-navy-300', bg: 'bg-navy-700' },
             { label: 'My Info Given', value: totals.info, icon: FileText, color: 'text-gold-400', bg: 'bg-gold-400/10' },
             { label: 'Vendor Lists', value: totals.vendor, icon: ClipboardList, color: 'text-pink-400', bg: 'bg-pink-400/10' },
           ].map(({ label, value, icon: Icon, color, bg }) => (
@@ -193,9 +193,9 @@ export default function DoorKnockingPage() {
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                     <span className="text-navy-300"><span className="font-medium text-white">{s.total_doors}</span> doors knocked</span>
-                    <span className="text-navy-300"><span className="font-medium text-green-400">{s.answered}</span> answered <span className="text-navy-500 text-xs">({rate}%)</span></span>
-                    <span className="text-navy-300"><span className="font-medium text-yellow-400">{s.left_at_door}</span> left at door</span>
-                    <span className="text-navy-300"><span className="font-medium text-purple-400">{s.gave_flyer}</span> flyers</span>
+                    <span className="text-navy-300"><span className="font-medium text-white">{s.answered}</span> answered <span className="text-navy-500 text-xs">({rate}%)</span></span>
+                    <span className="text-navy-300"><span className="font-medium text-white">{s.left_at_door}</span> left at door</span>
+                    <span className="text-navy-300"><span className="font-medium text-navy-300">{s.gave_flyer}</span> flyers</span>
                     <span className="text-navy-300"><span className="font-medium text-gold-400">{s.gave_my_info}</span> my info</span>
                     <span className="text-navy-300"><span className="font-medium text-pink-400">{s.gave_vendor_list}</span> vendor lists</span>
                   </div>

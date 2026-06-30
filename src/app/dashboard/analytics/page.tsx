@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Trophy, TrendingUp, Users, Home } from 'lucide-react';
@@ -159,7 +159,7 @@ export default function AnalyticsPage() {
                   <p className="text-xs text-navy-400">Unrep.</p>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-blue-400">{loc.count}</p>
+                  <p className="text-xl font-bold text-navy-300">{loc.count}</p>
                   <p className="text-xs text-navy-400">Events</p>
                 </div>
               </div>
@@ -190,7 +190,7 @@ export default function AnalyticsPage() {
         {/* Avg attendance by neighborhood */}
         <div className="bg-navy-800 rounded-xl border border-navy-700 p-5">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Home className="w-4 h-4 text-blue-400" /> Avg Attendance by Neighborhood
+            <Home className="w-4 h-4 text-navy-300" /> Avg Attendance by Neighborhood
           </h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={neighborhoodData} layout="vertical">
@@ -206,7 +206,7 @@ export default function AnalyticsPage() {
         {/* Traffic breakdown pie */}
         <div className="bg-navy-800 rounded-xl border border-navy-700 p-5">
           <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Users className="w-4 h-4 text-purple-400" /> Overall Traffic Breakdown
+            <Users className="w-4 h-4 text-navy-300" /> Overall Traffic Breakdown
           </h3>
           <ResponsiveContainer width="100%" height={220}>
             <PieChart>

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, List, Upload, X, Check, AlertCircle } from 'lucide-react';
@@ -220,7 +220,7 @@ export default function VendorsPage() {
                 <div className="px-5 py-3 flex items-center justify-end gap-3 border-b border-navy-750">
                   <button
                     onClick={() => openPdfModal(list.id)}
-                    className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 text-sm font-medium"
+                    className="flex items-center gap-1.5 text-navy-300 hover:text-navy-300 text-sm font-medium"
                   >
                     <Upload className="w-4 h-4" /> Import PDF
                   </button>
@@ -376,9 +376,9 @@ export default function VendorsPage() {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handlePdfFile(f); }}
                 onClick={() => fileRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-blue-400 bg-blue-400/10' : 'border-navy-600 hover:border-blue-500 hover:bg-navy-750/50'}`}
+                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-navy-500 bg-navy-700' : 'border-navy-600 hover:border-navy-400 hover:bg-navy-750/50'}`}
               >
-                <Upload className="w-8 h-8 text-blue-400 mx-auto mb-3" />
+                <Upload className="w-8 h-8 text-navy-300 mx-auto mb-3" />
                 <p className="text-white font-medium mb-1">Drop your PDF here</p>
                 <p className="text-navy-400 text-sm">or click to browse</p>
                 <input
@@ -391,8 +391,8 @@ export default function VendorsPage() {
               </div>
 
               {pdfLoading && (
-                <div className="flex items-center gap-2 text-blue-400 text-sm justify-center py-2">
-                  <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                <div className="flex items-center gap-2 text-navy-300 text-sm justify-center py-2">
+                  <div className="w-4 h-4 border-2 border-navy-500 border-t-transparent rounded-full animate-spin" />
                   Parsing PDF…
                 </div>
               )}

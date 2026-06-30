@@ -6,9 +6,9 @@ import Modal from '@/components/Modal';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'No Status', color: 'text-navy-400' },
-  { value: 'converted_buyer', label: 'Converted — Buyer', color: 'text-green-400' },
-  { value: 'converted_seller', label: 'Converted — Seller', color: 'text-green-400' },
-  { value: 'in_progress', label: 'In Progress', color: 'text-blue-400' },
+  { value: 'converted_buyer', label: 'Converted — Buyer', color: 'text-white' },
+  { value: 'converted_seller', label: 'Converted — Seller', color: 'text-white' },
+  { value: 'in_progress', label: 'In Progress', color: 'text-navy-300' },
   { value: 'lost', label: 'Lost', color: 'text-red-400' },
 ];
 
@@ -155,7 +155,7 @@ export default function ContactsPage() {
             {hasAgent && (
               <button
                 onClick={() => setExpanded(isExpanded ? null : c.id)}
-                className="p-1.5 text-navy-400 hover:text-yellow-400 hover:bg-yellow-400/10 rounded transition-colors"
+                className="p-1.5 text-navy-400 hover:text-white hover:bg-navy-700 rounded transition-colors"
                 title="View agent info"
               >
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -171,8 +171,8 @@ export default function ContactsPage() {
         </div>
         {hasAgent && isExpanded && (
           <div className="px-4 pb-3 pl-16">
-            <div className="bg-navy-750 border border-yellow-500/20 rounded-lg p-3 space-y-1">
-              <p className="text-xs font-semibold text-yellow-400 uppercase tracking-wide mb-2">Buyer&apos;s Agent</p>
+            <div className="bg-navy-750 border border-navy-600 rounded-lg p-3 space-y-1">
+              <p className="text-xs font-semibold text-white uppercase tracking-wide mb-2">Buyer&apos;s Agent</p>
               {c.agent_name && <p className="text-sm text-white font-medium">{c.agent_name}{c.agent_brokerage ? ` · ${c.agent_brokerage}` : ''}</p>}
               {c.agent_phone && <p className="text-xs text-navy-300">{c.agent_phone}</p>}
               {c.agent_email && <p className="text-xs text-navy-300">{c.agent_email}</p>}
@@ -230,8 +230,8 @@ export default function ContactsPage() {
       </div>
 
       <div className="space-y-6">
-        <Section title="Represented Buyers" accent="bg-yellow-500/15 text-yellow-400" items={represented} emptyMsg="No represented buyers yet." />
-        <Section title="Unrepresented Buyers" accent="bg-blue-500/15 text-blue-400" items={unrepresented} emptyMsg="No unrepresented buyers yet." />
+        <Section title="Represented Buyers" accent="bg-navy-700/60 text-white" items={represented} emptyMsg="No represented buyers yet." />
+        <Section title="Unrepresented Buyers" accent="bg-blue-500/15 text-navy-300" items={unrepresented} emptyMsg="No unrepresented buyers yet." />
         {manual.length > 0 && (
           <Section title="Other Contacts" accent="bg-navy-600 text-navy-300" items={manual} emptyMsg="No other contacts." />
         )}

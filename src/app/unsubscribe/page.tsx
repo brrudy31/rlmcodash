@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -48,7 +48,7 @@ function UnsubscribeContent() {
         )}
         {status === 'success' && (
           <div className="flex flex-col items-center gap-4">
-            <CheckCircle className="w-12 h-12 text-green-400" />
+            <CheckCircle className="w-12 h-12 text-white" />
             <h2 className="text-xl font-semibold text-white">Unsubscribed</h2>
             <p className="text-navy-300">{message}</p>
             <p className="text-navy-400 text-sm mt-2">You will no longer receive emails from this list.</p>

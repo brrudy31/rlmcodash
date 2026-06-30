@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import crypto from 'crypto';
 import { getDb, ensureSchema } from '@/lib/db';
@@ -86,10 +86,10 @@ export async function POST(request: NextRequest) {
 function buildEmailHtml(clientName: string, listName: string, vendors: Vendor[], customMessage: string | null, unsubscribeUrl: string): string {
   const vendorRows = vendors.map((v) => `
     <tr>
-      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;font-weight:500;color:#1a1a2e;">${escHtml(v.name)}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;font-weight:500;color:#000000;">${escHtml(v.name)}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${escHtml(v.trade || '—')}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${escHtml(v.phone || '—')}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${v.email ? `<a href="mailto:${escHtml(v.email)}" style="color:#1e3d70;">${escHtml(v.email)}</a>` : '—'}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #e8e8e8;color:#444;">${v.email ? `<a href="mailto:${escHtml(v.email)}" style="color:#111111;">${escHtml(v.email)}</a>` : '—'}</td>
     </tr>`).join('');
 
   return `<!DOCTYPE html>
@@ -100,9 +100,9 @@ function buildEmailHtml(clientName: string, listName: string, vendors: Vendor[],
   <tr><td align="center">
     <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1);">
       <tr>
-        <td style="background:linear-gradient(135deg,#0a1628,#162d57);padding:36px 40px;text-align:center;">
-          <h1 style="margin:0;color:#c9a84c;font-size:28px;letter-spacing:6px;font-weight:700;">RLM&amp;CO</h1>
-          <p style="margin:8px 0 0;color:#8ba3c0;font-size:13px;letter-spacing:1px;">VENDOR RESOURCE LIST</p>
+        <td style="background:#000000;padding:36px 40px;text-align:center;">
+          <h1 style="margin:0;color:#ffffff;font-size:28px;letter-spacing:6px;font-weight:700;">RLM&amp;CO</h1>
+          <p style="margin:8px 0 0;color:#aaaaaa;font-size:13px;letter-spacing:1px;">VENDOR RESOURCE LIST</p>
         </td>
       </tr>
       <tr>
@@ -115,10 +115,10 @@ function buildEmailHtml(clientName: string, listName: string, vendors: Vendor[],
           <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:6px;overflow:hidden;margin-top:24px;border:1px solid #e0e0e0;">
             <thead>
               <tr style="background:#0a1628;">
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">NAME</th>
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">TRADE</th>
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">PHONE</th>
-                <th style="padding:12px 14px;text-align:left;color:#c9a84c;font-size:12px;letter-spacing:1px;">EMAIL</th>
+                <th style="padding:12px 14px;text-align:left;color:#ffffff;font-size:12px;letter-spacing:1px;">NAME</th>
+                <th style="padding:12px 14px;text-align:left;color:#ffffff;font-size:12px;letter-spacing:1px;">TRADE</th>
+                <th style="padding:12px 14px;text-align:left;color:#ffffff;font-size:12px;letter-spacing:1px;">PHONE</th>
+                <th style="padding:12px 14px;text-align:left;color:#ffffff;font-size:12px;letter-spacing:1px;">EMAIL</th>
               </tr>
             </thead>
             <tbody>${vendorRows}</tbody>
@@ -131,7 +131,7 @@ function buildEmailHtml(clientName: string, listName: string, vendors: Vendor[],
         <td style="background:#f8f9fb;border-top:1px solid #e8e8e8;padding:20px 40px;text-align:center;">
           <p style="margin:0;color:#999;font-size:12px;">
             You received this email because you are on our client list.<br>
-            To unsubscribe, <a href="${unsubscribeUrl}" style="color:#1e3d70;">click here</a>.
+            To unsubscribe, <a href="${unsubscribeUrl}" style="color:#111111;">click here</a>.
           </p>
         </td>
       </tr>
