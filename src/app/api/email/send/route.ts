@@ -2,9 +2,12 @@
 import { Resend } from 'resend';
 import crypto from 'crypto';
 import { getDb, ensureSchema } from '@/lib/db';
+import { getUserIdFromRequest } from '@/lib/auth';
 import type { Vendor, Client } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { vendorListId, clientIds, subject, message } = await request.json();
 
   if (!vendorListId || !clientIds?.length || !subject?.trim()) {
@@ -22,7 +25,7 @@ export async function POST(request: NextRequest) {
   await ensureSchema();
   const db = getDb();
 
-  const { rows: vlRows } = await db.execute({ sql: 'SELECT * FROM vendor_lists WHERE id = ?', args: [vendorListId] });
+  const { rows: vlRows } = await db.execute({ sql: 'SELECT * FROM vendor_lists WHERE id = ? AND user_id = ?', args: [vendorListId, userId] });
   const vendorList = vlRows[0] as unknown as { id: number | bigint; name: string } | undefined;
   if (!vendorList) {
     return NextResponse.json({ error: 'Vendor list not found' }, { status: 404 });
@@ -43,8 +46,8 @@ export async function POST(request: NextRequest) {
   }
 
   const campaignResult = await db.execute({
-    sql: 'INSERT INTO email_campaigns (vendor_list_id, vendor_list_name, subject, message) VALUES (?, ?, ?, ?)',
-    args: [vendorListId, vendorList.name, subject.trim(), message?.trim() || null],
+    sql: 'INSERT INTO email_campaigns (vendor_list_id, vendor_list_name, subject, message, user_id) VALUES (?, ?, ?, ?, ?)',
+    args: [vendorListId, vendorList.name, subject.trim(), message?.trim() || null, userId],
   });
   const campaignId = Number(campaignResult.lastInsertRowid);
 

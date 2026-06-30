@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { getDb, ensureSchema } from '@/lib/db';
+import { getUserIdFromRequest } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getUserIdFromRequest(req);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   const resendKey = process.env.RESEND_API_KEY;
   const fromEmail = process.env.RESEND_FROM_EMAIL;
@@ -18,8 +21,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const db = getDb();
 
   const { rows: houseRows } = await db.execute({
-    sql: 'SELECT * FROM open_houses WHERE id = ?',
-    args: [id],
+    sql: 'SELECT * FROM open_houses WHERE id = ? AND user_id = ?',
+    args: [id, userId],
   });
 
   if (!houseRows[0]) {
