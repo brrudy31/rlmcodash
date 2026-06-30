@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, ensureSchema } from '@/lib/db';
+import { getUserIdFromRequest } from '@/lib/auth';
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   const { name, email, phone } = await request.json();
   if (!name?.trim() || !email?.trim()) {
@@ -10,8 +13,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   await ensureSchema();
   const db = getDb();
   try {
-    await db.execute({ sql: 'UPDATE clients SET name = ?, email = ?, phone = ? WHERE id = ?', args: [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, id] });
-    const { rows } = await db.execute({ sql: 'SELECT * FROM clients WHERE id = ?', args: [id] });
+    await db.execute({ sql: 'UPDATE clients SET name = ?, email = ?, phone = ? WHERE id = ? AND user_id = ?', args: [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, id, userId] });
+    const { rows } = await db.execute({ sql: 'SELECT * FROM clients WHERE id = ? AND user_id = ?', args: [id, userId] });
     if (!rows[0]) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     return NextResponse.json(rows[0]);
   } catch (err: unknown) {
@@ -23,18 +26,22 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   const { status } = await request.json();
   await ensureSchema();
   const db = getDb();
-  await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ?', args: [status || null, id] });
+  await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ? AND user_id = ?', args: [status || null, id, userId] });
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const userId = await getUserIdFromRequest(request);
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   await ensureSchema();
   const db = getDb();
-  await db.execute({ sql: 'DELETE FROM clients WHERE id = ?', args: [id] });
+  await db.execute({ sql: 'DELETE FROM clients WHERE id = ? AND user_id = ?', args: [id, userId] });
   return NextResponse.json({ success: true });
 }

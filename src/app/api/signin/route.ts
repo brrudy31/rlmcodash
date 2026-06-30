@@ -29,13 +29,15 @@ export async function POST(req: NextRequest) {
              has_home_to_buy, has_home_to_sell, is_pre_approved, working_with_agent,
              agent_name, agent_phone, agent_email, agent_brokerage)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [openHouseId, firstName.trim(), lastName.trim(), phone.trim(), email.trim(), hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null],
+    args: [openHouseId, firstName.trim(), lastName.trim(), phone?.trim() || null, email?.trim() || null, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null],
   });
 
-  // Upsert into contacts — insert new or update phone/agent info if email already exists
+  // Upsert into contacts scoped to the open house owner
+  const ownerUserId = house.user_id ?? null;
+
   await db.execute({
-    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage, working_with_agent)
-          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage, working_with_agent, user_id)
+          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             phone = COALESCE(excluded.phone, phone),
             source = COALESCE(source, 'Open House'),
@@ -47,14 +49,15 @@ export async function POST(req: NextRequest) {
             working_with_agent = COALESCE(excluded.working_with_agent, working_with_agent)`,
     args: [
       `${firstName.trim()} ${lastName.trim()}`,
-      email.trim().toLowerCase(),
-      phone.trim(),
+      email?.trim().toLowerCase() || `noemail_${Date.now()}@placeholder.local`,
+      phone?.trim() || null,
       openHouseId,
       agentName?.trim() || null,
       agentPhone?.trim() || null,
       agentEmail?.trim() || null,
       agentBrokerage?.trim() || null,
       workingWithAgent ? 1 : 0,
+      ownerUserId,
     ],
   });
 

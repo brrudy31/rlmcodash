@@ -1,19 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
 import { createSessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { getDb, ensureSchema } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
-  const { password } = await request.json();
-  const expectedPassword = process.env.DASHBOARD_PASSWORD;
-
-  if (!expectedPassword) {
-    return NextResponse.json({ error: 'Server not configured' }, { status: 500 });
+  const { email, password } = await request.json();
+  if (!email?.trim() || !password) {
+    return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
   }
 
-  if (password !== expectedPassword) {
-    return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+  await ensureSchema();
+  const db = getDb();
+  const { rows } = await db.execute({
+    sql: 'SELECT * FROM users WHERE email = ?',
+    args: [email.trim().toLowerCase()],
+  });
+
+  const user = rows[0];
+  if (!user || !(await bcrypt.compare(password, String(user.password_hash)))) {
+    return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });
   }
 
-  const token = await createSessionToken();
+  const token = await createSessionToken(Number(user.id));
   const response = NextResponse.json({ success: true });
   response.cookies.set(SESSION_COOKIE_NAME, token, {
     httpOnly: true,

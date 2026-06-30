@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
   '/api/signin',
   '/signin',
   '/api/debug-env',
+  '/signup',
+  '/api/auth/signup',
 ];
 
 export async function middleware(request: NextRequest) {

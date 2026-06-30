@@ -13,6 +13,14 @@ export function getDb(): LibSQLClient {
 }
 
 const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -146,6 +154,12 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE clients ADD COLUMN agent_brokerage TEXT',
     'ALTER TABLE clients ADD COLUMN working_with_agent INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE clients ADD COLUMN status TEXT',
+    'ALTER TABLE clients ADD COLUMN user_id INTEGER',
+    'ALTER TABLE open_houses ADD COLUMN user_id INTEGER',
+    'ALTER TABLE vendor_lists ADD COLUMN user_id INTEGER',
+    'ALTER TABLE door_knocking ADD COLUMN user_id INTEGER',
+    'ALTER TABLE market_stats ADD COLUMN user_id INTEGER',
+    'ALTER TABLE email_campaigns ADD COLUMN user_id INTEGER',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }
