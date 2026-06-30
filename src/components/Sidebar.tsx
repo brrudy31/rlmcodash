@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   DoorOpen,
+  Settings,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -28,7 +29,7 @@ const nav = [
   { label: 'Door Knocking', href: '/dashboard/door-knocking', icon: DoorOpen },
   { label: 'Market Stats', href: '/dashboard/market', icon: TrendingUp },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
-
+  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 export default function Sidebar() {

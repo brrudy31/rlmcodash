@@ -111,6 +111,15 @@ const SCHEMA = `
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS user_crm_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    crm_type TEXT NOT NULL DEFAULT 'none',
+    api_key TEXT,
+    location_id TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS open_house_signins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     open_house_id INTEGER NOT NULL REFERENCES open_houses(id) ON DELETE CASCADE,
