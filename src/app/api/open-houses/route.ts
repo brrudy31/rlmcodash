@@ -9,9 +9,9 @@ export async function GET(request: NextRequest) {
   const db = getDb();
   const { rows } = await db.execute({
     sql: `SELECT oh.*,
-            (SELECT COUNT(*) FROM clients WHERE open_house_id = oh.id AND working_with_agent = 1) AS represented_buyers,
-            (SELECT COUNT(*) FROM clients WHERE open_house_id = oh.id AND working_with_agent = 0) AS unrepresented_buyers,
-            oh.neighbors + (SELECT COUNT(*) FROM clients WHERE open_house_id = oh.id) AS total_attendees
+            (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = oh.id AND working_with_agent = 1) AS represented_buyers,
+            (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = oh.id AND working_with_agent = 0) AS unrepresented_buyers,
+            oh.neighbors + (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = oh.id) AS total_attendees
           FROM open_houses oh
           WHERE oh.user_id = ?
           ORDER BY oh.date DESC, oh.created_at DESC`,
