@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, ensureSchema } from '@/lib/db';
 
+export const runtime = 'nodejs';
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { openHouseId, firstName, lastName, phone, email, hasHomeToBuy, hasHomeToSell, isPreApproved, workingWithAgent, agentName, agentPhone, agentEmail, agentBrokerage } = body;
@@ -68,75 +70,71 @@ export async function POST(req: NextRequest) {
     args: [openHouseId, openHouseId, openHouseId, openHouseId],
   });
 
-  // Push to CRM if the open house owner has one configured
+  // Push to CRM — look up settings by house owner, or fall back to first configured user
   let crmContactId: string | null = null;
-  if (house.user_id) {
-    const { rows: crmRows } = await db.execute({
-      sql: 'SELECT crm_type, api_key, location_id FROM user_crm_settings WHERE user_id = ?',
-      args: [house.user_id],
-    });
-    const crm = crmRows[0];
-    if (crm && crm.crm_type !== 'none' && crm.api_key) {
-      const contactName = `${firstName.trim()} ${lastName.trim()}`;
-      const tags = ['Open House', `Property: ${house.address}`];
-      if (hasHomeToBuy) tags.push('Looking To Buy');
-      if (hasHomeToSell) tags.push('Has Home To Sell');
-      if (!isPreApproved) tags.push('Not Pre-Approved');
-      if (workingWithAgent) { tags.push('Working With Agent'); tags.push('Represented Buyer'); }
+  let crmError: string | null = null;
+  const { rows: crmRows } = await db.execute({
+    sql: house.user_id
+      ? 'SELECT crm_type, api_key, location_id FROM user_crm_settings WHERE user_id = ?'
+      : 'SELECT crm_type, api_key, location_id FROM user_crm_settings WHERE crm_type != ? LIMIT 1',
+    args: house.user_id ? [house.user_id] : ['none'],
+  });
+  const crm = crmRows[0];
+  if (crm && crm.crm_type !== 'none' && crm.api_key) {
+    const tags = ['Open House', `Property: ${house.address}`];
+    if (hasHomeToBuy) tags.push('Looking To Buy');
+    if (hasHomeToSell) tags.push('Has Home To Sell');
+    if (!isPreApproved) tags.push('Not Pre-Approved');
+    if (workingWithAgent) { tags.push('Working With Agent'); tags.push('Represented Buyer'); }
 
-      const agentNote = workingWithAgent
-        ? ["--- Buyer's Agent ---", agentName && `Name: ${agentName}`, agentBrokerage && `Brokerage: ${agentBrokerage}`, agentPhone && `Phone: ${agentPhone}`, agentEmail && `Email: ${agentEmail}`].filter(Boolean).join('\n')
-        : null;
+    const agentNote = workingWithAgent
+      ? ["--- Buyer's Agent ---", agentName && `Name: ${agentName}`, agentBrokerage && `Brokerage: ${agentBrokerage}`, agentPhone && `Phone: ${agentPhone}`, agentEmail && `Email: ${agentEmail}`].filter(Boolean).join('\n')
+      : null;
 
-      try {
-        if (crm.crm_type === 'ghl' && crm.location_id) {
-          const res = await fetch('https://services.leadconnectorhq.com/contacts/', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${crm.api_key}`, 'Content-Type': 'application/json', Version: '2021-07-28' },
-            body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone?.trim() || undefined, email: email?.trim() || undefined, locationId: crm.location_id, tags, source: 'Open House Sign-In', ...(agentNote && { notes: agentNote }) }),
-          });
-          if (res.ok) crmContactId = (await res.json())?.contact?.id ?? null;
-
-        } else if (crm.crm_type === 'followupboss') {
-          const res = await fetch('https://api.followupboss.com/v1/events', {
-            method: 'POST',
-            headers: { Authorization: `Basic ${Buffer.from(`${crm.api_key}:`).toString('base64')}`, 'Content-Type': 'application/json', 'X-System': 'RLM&CO Dashboard', 'X-System-Key': crm.api_key as string },
-            body: JSON.stringify({
-              source: 'Open House',
-              type: 'Registration',
-              people: [{ firstName: firstName.trim(), lastName: lastName.trim(), emails: email ? [{ value: email.trim() }] : [], phones: phone ? [{ value: phone.trim() }] : [], tags }],
-              ...(agentNote && { description: agentNote }),
-            }),
-          });
-          if (res.ok) crmContactId = (await res.json())?.id?.toString() ?? null;
-
-        } else if (crm.crm_type === 'hubspot') {
-          const res = await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${crm.api_key}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              properties: {
-                firstname: firstName.trim(),
-                lastname: lastName.trim(),
-                ...(email && { email: email.trim() }),
-                ...(phone && { phone: phone.trim() }),
-                hs_lead_status: 'NEW',
-                lead_source: 'Open House',
-                ...(agentNote && { notes_last_activity: agentNote }),
-              },
-            }),
-          });
-          if (res.ok) crmContactId = (await res.json())?.id?.toString() ?? null;
+    try {
+      if (crm.crm_type === 'ghl' && crm.location_id) {
+        const res = await fetch('https://services.leadconnectorhq.com/contacts/', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${crm.api_key}`, 'Content-Type': 'application/json', Version: '2021-07-28' },
+          body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone?.trim() || undefined, email: email?.trim() || undefined, locationId: crm.location_id, tags, source: 'Open House Sign-In', ...(agentNote && { notes: agentNote }) }),
+        });
+        if (res.ok) {
+          crmContactId = (await res.json())?.contact?.id ?? null;
+        } else {
+          const errBody = await res.json().catch(() => ({}));
+          crmError = `GHL ${res.status}: ${JSON.stringify(errBody)}`;
         }
 
-        if (crmContactId) {
-          await db.execute({ sql: 'UPDATE open_house_signins SET ghl_contact_id = ? WHERE id = ?', args: [crmContactId, Number(result.lastInsertRowid)] });
-        }
-      } catch {
-        // CRM push failed — sign-in still saved locally
+      } else if (crm.crm_type === 'followupboss') {
+        const res = await fetch('https://api.followupboss.com/v1/events', {
+          method: 'POST',
+          headers: { Authorization: `Basic ${Buffer.from(`${crm.api_key}:`).toString('base64')}`, 'Content-Type': 'application/json', 'X-System': 'RLM&CO Dashboard', 'X-System-Key': crm.api_key as string },
+          body: JSON.stringify({
+            source: 'Open House', type: 'Registration',
+            people: [{ firstName: firstName.trim(), lastName: lastName.trim(), emails: email ? [{ value: email.trim() }] : [], phones: phone ? [{ value: phone.trim() }] : [], tags }],
+            ...(agentNote && { description: agentNote }),
+          }),
+        });
+        if (res.ok) crmContactId = (await res.json())?.id?.toString() ?? null;
+        else { const e = await res.json().catch(() => ({})); crmError = `FUB ${res.status}: ${JSON.stringify(e)}`; }
+
+      } else if (crm.crm_type === 'hubspot') {
+        const res = await fetch('https://api.hubapi.com/crm/v3/objects/contacts', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${crm.api_key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ properties: { firstname: firstName.trim(), lastname: lastName.trim(), ...(email && { email: email.trim() }), ...(phone && { phone: phone.trim() }), hs_lead_status: 'NEW', lead_source: 'Open House', ...(agentNote && { notes_last_activity: agentNote }) } }),
+        });
+        if (res.ok) crmContactId = (await res.json())?.id?.toString() ?? null;
+        else { const e = await res.json().catch(() => ({})); crmError = `HubSpot ${res.status}: ${JSON.stringify(e)}`; }
       }
+
+      if (crmContactId) {
+        await db.execute({ sql: 'UPDATE open_house_signins SET ghl_contact_id = ? WHERE id = ?', args: [crmContactId, Number(result.lastInsertRowid)] });
+      }
+    } catch (err) {
+      crmError = String(err);
     }
   }
 
-  return NextResponse.json({ success: true, crmContactId });
+  return NextResponse.json({ success: true, crmContactId, crmError });
 }
