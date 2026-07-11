@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
   // Auto-update open house represented/unrepresented counts from actual sign-in data
   await db.execute({
     sql: `UPDATE open_houses SET
-            represented_buyers = (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = ? AND working_with_agent = 1),
-            unrepresented_buyers = (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = ? AND working_with_agent = 0),
-            total_attendees = (SELECT COUNT(*) FROM open_house_signins WHERE open_house_id = ?)
+            represented_buyers   = (SELECT COUNT(*) FROM clients WHERE open_house_id = ? AND working_with_agent = 1),
+            unrepresented_buyers = (SELECT COUNT(*) FROM clients WHERE open_house_id = ? AND working_with_agent = 0),
+            total_attendees      = neighbors + (SELECT COUNT(*) FROM clients WHERE open_house_id = ?)
           WHERE id = ?`,
     args: [openHouseId, openHouseId, openHouseId, openHouseId],
   });

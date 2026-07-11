@@ -25,6 +25,17 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+async function recalcOpenHouseCounts(db: import('@libsql/client').Client, openHouseId: number) {
+  await db.execute({
+    sql: `UPDATE open_houses SET
+            represented_buyers   = (SELECT COUNT(*) FROM clients WHERE open_house_id = ? AND working_with_agent = 1),
+            unrepresented_buyers = (SELECT COUNT(*) FROM clients WHERE open_house_id = ? AND working_with_agent = 0),
+            total_attendees      = neighbors + (SELECT COUNT(*) FROM clients WHERE open_house_id = ?)
+          WHERE id = ?`,
+    args: [openHouseId, openHouseId, openHouseId, openHouseId],
+  });
+}
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getUserIdFromRequest(request);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -33,7 +44,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   await ensureSchema();
   const db = getDb();
   if ('open_house_id' in body) {
+    // Grab the old open_house_id before changing it
+    const { rows } = await db.execute({ sql: 'SELECT open_house_id FROM clients WHERE id = ? AND user_id = ?', args: [id, userId] });
+    const oldOhId = rows[0]?.open_house_id as number | null;
     await db.execute({ sql: 'UPDATE clients SET open_house_id = ? WHERE id = ? AND user_id = ?', args: [body.open_house_id ?? null, id, userId] });
+    // Recalculate counts for both affected open houses
+    if (oldOhId) await recalcOpenHouseCounts(db, oldOhId);
+    if (body.open_house_id && body.open_house_id !== oldOhId) await recalcOpenHouseCounts(db, body.open_house_id);
   }
   if ('status' in body) {
     await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ? AND user_id = ?', args: [body.status || null, id, userId] });
