@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -40,6 +40,8 @@ export default function OpenHousesPage() {
   const [signinsHouse, setSigninsHouse] = useState<OpenHouse | null>(null);
   const [signins, setSignins] = useState<SignIn[]>([]);
   const [sendingSummary, setSendingSummary] = useState<number | null>(null);
+  const [syncingCrm, setSyncingCrm] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; errors: string[] } | null>(null);
 
   async function load() {
     const data = await fetch('/api/open-houses').then((r) => r.json());
@@ -104,6 +106,23 @@ export default function OpenHousesPage() {
     const data = await fetch(`/api/open-houses/${h.id}/signins`).then((r) => r.json());
     setSignins(data);
     setSigninsHouse(h);
+    setSyncResult(null);
+  }
+
+  async function syncCrm(h: OpenHouse) {
+    setSyncingCrm(true);
+    setSyncResult(null);
+    const res = await fetch(`/api/open-houses/${h.id}/sync-crm`, { method: 'POST' });
+    const data = await res.json();
+    setSyncingCrm(false);
+    if (!res.ok) {
+      setSyncResult({ synced: 0, failed: 0, errors: [data.error || 'Unknown error'] });
+    } else {
+      setSyncResult({ synced: data.synced, failed: data.failed, errors: data.errors || [] });
+      // Refresh signins to show updated GHL badges
+      const updated = await fetch(`/api/open-houses/${h.id}/signins`).then((r) => r.json());
+      setSignins(updated);
+    }
   }
 
   async function sendSummary(h: OpenHouse) {
@@ -334,7 +353,7 @@ export default function OpenHousesPage() {
 
       {/* Sign-Ins Modal */}
       {signinsHouse && (
-        <Modal title={`Sign-Ins — ${signinsHouse.address}`} onClose={() => setSigninsHouse(null)} size="lg">
+        <Modal title={`Sign-Ins — ${signinsHouse.address}`} onClose={() => { setSigninsHouse(null); setSyncResult(null); }} size="lg">
           {signins.length === 0 ? (
             <p className="text-navy-400 text-sm text-center py-8">No sign-ins yet for this open house.</p>
           ) : (
@@ -351,7 +370,10 @@ export default function OpenHousesPage() {
                       {Boolean(s.has_home_to_sell) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Selling</span>}
                       {Boolean(s.is_pre_approved) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Pre-Approved</span>}
                       {Boolean(s.working_with_agent) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Has Agent</span>}
-                      {s.ghl_contact_id && <span className="text-xs bg-gold-500/20 text-gold-400 px-2 py-0.5 rounded-full">In GHL</span>}
+                      {s.ghl_contact_id
+                        ? <span className="text-xs bg-gold-500/20 text-gold-400 px-2 py-0.5 rounded-full">✓ In CRM</span>
+                        : <span className="text-xs bg-navy-700 text-navy-500 px-2 py-0.5 rounded-full">Not synced</span>
+                      }
                     </div>
                   </div>
                   {Boolean(s.working_with_agent) && (s.agent_name || s.agent_brokerage || s.agent_phone || s.agent_email) && (
@@ -366,7 +388,32 @@ export default function OpenHousesPage() {
               ))}
             </div>
           )}
-          <p className="text-navy-500 text-xs mt-4 text-center">{signins.length} sign-in{signins.length !== 1 ? 's' : ''} recorded</p>
+
+          {syncResult && (
+            <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${syncResult.failed > 0 ? 'bg-red-900/30 border border-red-700 text-red-300' : 'bg-green-900/30 border border-green-700 text-green-300'}`}>
+              {syncResult.errors.length > 0 && syncResult.synced === 0
+                ? syncResult.errors[0]
+                : `✓ Synced ${syncResult.synced} contact${syncResult.synced !== 1 ? 's' : ''} to CRM${syncResult.failed > 0 ? ` · ${syncResult.failed} failed` : ''}`
+              }
+              {syncResult.errors.length > 0 && syncResult.synced > 0 && (
+                <ul className="mt-1 text-xs opacity-80 space-y-0.5">{syncResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-4">
+            <p className="text-navy-500 text-xs">{signins.length} sign-in{signins.length !== 1 ? 's' : ''} · {signins.filter(s => s.ghl_contact_id).length} synced to CRM</p>
+            {signins.some(s => !s.ghl_contact_id) && (
+              <button
+                onClick={() => syncCrm(signinsHouse)}
+                disabled={syncingCrm}
+                className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold px-3 py-1.5 rounded-lg text-xs transition-colors"
+              >
+                <RefreshCw className={`w-3 h-3 ${syncingCrm ? 'animate-spin' : ''}`} />
+                {syncingCrm ? 'Syncing...' : `Sync ${signins.filter(s => !s.ghl_contact_id).length} to CRM`}
+              </button>
+            )}
+          </div>
         </Modal>
       )}
     </div>
