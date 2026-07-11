@@ -39,7 +39,7 @@ interface OpenHouse {
   date: string;
 }
 
-const empty = { name: '', email: '', phone: '' };
+const empty = { name: '', email: '', phone: '', open_house_id: '' };
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -82,7 +82,7 @@ export default function ContactsPage() {
 
   function openEdit(c: Contact) {
     setEditing(c);
-    setForm({ name: c.name, email: c.email, phone: c.phone || '' });
+    setForm({ name: c.name, email: c.email, phone: c.phone || '', open_house_id: c.open_house_id ? String(c.open_house_id) : '' });
     setError(''); setModal('edit');
   }
 
@@ -90,9 +90,16 @@ export default function ContactsPage() {
     setSaving(true); setError('');
     const url = modal === 'edit' ? `/api/clients/${editing!.id}` : '/api/clients';
     const method = modal === 'edit' ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name, email: form.email, phone: form.phone }) });
     const data = await res.json();
     if (!res.ok) { setError(data.error); setSaving(false); return; }
+    if (modal === 'edit') {
+      await fetch(`/api/clients/${editing!.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ open_house_id: form.open_house_id ? Number(form.open_house_id) : null }),
+      });
+    }
     setModal(null); setSaving(false); load();
   }
 
@@ -258,6 +265,23 @@ export default function ContactsPage() {
                 className="w-full bg-navy-750 border border-navy-600 rounded-lg px-4 py-2.5 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
                 placeholder="215-555-0100" />
             </div>
+            {modal === 'edit' && (
+              <div>
+                <label className="block text-sm font-medium text-navy-300 mb-1.5">Open House <span className="text-navy-500">(where you met them)</span></label>
+                <select
+                  value={form.open_house_id}
+                  onChange={(e) => setForm({ ...form, open_house_id: e.target.value })}
+                  className="w-full bg-navy-750 border border-navy-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold-500 text-sm"
+                >
+                  <option value="">— Not from an open house —</option>
+                  {openHouses.map((h) => (
+                    <option key={h.id} value={h.id}>
+                      {h.address} ({new Date(h.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 border border-navy-600 text-navy-300 hover:text-white hover:border-navy-500 py-2.5 rounded-lg text-sm transition-colors">Cancel</button>

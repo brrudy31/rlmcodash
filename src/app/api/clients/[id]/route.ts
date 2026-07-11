@@ -29,10 +29,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const userId = await getUserIdFromRequest(request);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
-  const { status } = await request.json();
+  const body = await request.json();
   await ensureSchema();
   const db = getDb();
-  await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ? AND user_id = ?', args: [status || null, id, userId] });
+  if ('open_house_id' in body) {
+    await db.execute({ sql: 'UPDATE clients SET open_house_id = ? WHERE id = ? AND user_id = ?', args: [body.open_house_id ?? null, id, userId] });
+  }
+  if ('status' in body) {
+    await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ? AND user_id = ?', args: [body.status || null, id, userId] });
+  }
   return NextResponse.json({ success: true });
 }
 
