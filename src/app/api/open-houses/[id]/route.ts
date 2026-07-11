@@ -19,7 +19,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           WHERE id = ? AND user_id = ?`,
     args: [date, address.trim(), neighborhood?.trim() || null, city.trim(), start_time || null, end_time || null, Number(total_attendees) || 0, Number(neighbors) || 0, Number(represented_buyers) || 0, Number(unrepresented_buyers) || 0, notes?.trim() || null, id, userId],
   });
-  const { rows } = await db.execute({ sql: 'SELECT * FROM open_houses WHERE id = ? AND user_id = ?', args: [id, userId] });
+  const { rows } = await db.execute({
+    sql: `SELECT oh.*,
+            (SELECT COUNT(*) FROM clients WHERE open_house_id = oh.id AND working_with_agent = 1) AS represented_buyers,
+            (SELECT COUNT(*) FROM clients WHERE open_house_id = oh.id AND working_with_agent = 0) AS unrepresented_buyers,
+            oh.neighbors + (SELECT COUNT(*) FROM clients WHERE open_house_id = oh.id) AS total_attendees
+          FROM open_houses oh WHERE oh.id = ? AND oh.user_id = ?`,
+    args: [id, userId],
+  });
   if (!rows[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(rows[0]);
 }
