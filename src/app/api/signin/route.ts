@@ -22,13 +22,21 @@ export async function POST(req: NextRequest) {
   }
   const house = houseRows[0];
 
+  // Calculate lead score
+  let leadScore = 0;
+  if (isPreApproved) leadScore += 2;
+  if (!workingWithAgent) leadScore += 2;
+  if (hasHomeToBuy) leadScore += 1;
+  if (hasHomeToSell) leadScore += 1;
+  const leadTier = leadScore >= 4 ? 'Hot Lead' : leadScore >= 2 ? 'Warm Lead' : 'Cold Lead';
+
   const result = await db.execute({
     sql: `INSERT INTO open_house_signins
             (open_house_id, first_name, last_name, phone, email,
              has_home_to_buy, has_home_to_sell, is_pre_approved, working_with_agent,
-             agent_name, agent_phone, agent_email, agent_brokerage)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [openHouseId, firstName.trim(), lastName.trim(), phone?.trim() || null, email?.trim() || null, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null],
+             agent_name, agent_phone, agent_email, agent_brokerage, lead_score)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [openHouseId, firstName.trim(), lastName.trim(), phone?.trim() || null, email?.trim() || null, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null, leadScore],
   });
 
   // Upsert into contacts scoped to the open house owner
@@ -81,9 +89,10 @@ export async function POST(req: NextRequest) {
   });
   const crm = crmRows[0];
   if (crm && crm.crm_type !== 'none' && crm.api_key) {
-    const tags = ['Open House', `Property: ${house.address}`];
+    const tags = ['Open House', `Property: ${house.address}`, 'Just Signed In', leadTier];
     if (hasHomeToBuy) tags.push('Looking To Buy');
     if (hasHomeToSell) tags.push('Has Home To Sell');
+    if (isPreApproved) tags.push('Pre-Approved');
     if (!isPreApproved) tags.push('Not Pre-Approved');
     if (workingWithAgent) { tags.push('Working With Agent'); tags.push('Represented Buyer'); }
 
@@ -136,5 +145,5 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, crmContactId, crmError });
+  return NextResponse.json({ success: true, crmContactId, crmError, leadScore, leadTier });
 }

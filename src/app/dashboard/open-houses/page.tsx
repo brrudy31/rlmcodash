@@ -1,7 +1,8 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw, Radio } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -23,11 +24,13 @@ interface SignIn {
 const emptyForm = {
   date: '', address: '', neighborhood: '', city: '', start_time: '', end_time: '',
   total_attendees: '', neighbors: '', represented_buyers: '', unrepresented_buyers: '', notes: '',
+  price: '', beds: '', baths: '', sqft: '', description: '',
 };
 
 type SortKey = keyof OpenHouse;
 
 export default function OpenHousesPage() {
+  const router = useRouter();
   const [houses, setHouses] = useState<OpenHouse[]>([]);
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editing, setEditing] = useState<OpenHouse | null>(null);
@@ -69,12 +72,19 @@ export default function OpenHousesPage() {
 
   function openEdit(h: OpenHouse) {
     setEditing(h);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hh = h as any;
     setForm({
       date: h.date, address: h.address, neighborhood: h.neighborhood || '',
       city: h.city, start_time: h.start_time || '', end_time: h.end_time || '',
       total_attendees: String(h.total_attendees), neighbors: String(h.neighbors),
       represented_buyers: String(h.represented_buyers), unrepresented_buyers: String(h.unrepresented_buyers),
       notes: h.notes || '',
+      price: hh.price ? String(hh.price) : '',
+      beds: hh.beds ? String(hh.beds) : '',
+      baths: hh.baths ? String(hh.baths) : '',
+      sqft: hh.sqft ? String(hh.sqft) : '',
+      description: hh.description || '',
     });
     setError(''); setModal('edit');
   }
@@ -89,6 +99,11 @@ export default function OpenHousesPage() {
       neighbors: Number(form.neighbors) || 0,
       represented_buyers: Number(form.represented_buyers) || 0,
       unrepresented_buyers: Number(form.unrepresented_buyers) || 0,
+      price: form.price ? Number(form.price) : null,
+      beds: form.beds ? Number(form.beds) : null,
+      baths: form.baths ? Number(form.baths) : null,
+      sqft: form.sqft ? Number(form.sqft) : null,
+      description: form.description || null,
     };
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await res.json();
@@ -211,6 +226,9 @@ export default function OpenHousesPage() {
                   <td className="px-4 py-3 text-gold-400 text-center font-medium">{h.unrepresented_buyers}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
+                      <button onClick={() => router.push(`/dashboard/open-houses/${h.id}/live`)} title="Live hot-lead dashboard" className="p-1.5 text-navy-400 hover:text-green-400 hover:bg-green-400/10 rounded transition-colors">
+                        <Radio className="w-4 h-4" />
+                      </button>
                       <button onClick={() => setQrHouse(h)} title="Sign-in QR code" className="p-1.5 text-navy-400 hover:text-gold-400 hover:bg-navy-700 rounded transition-colors">
                         <QrCode className="w-4 h-4" />
                       </button>
@@ -303,6 +321,40 @@ export default function OpenHousesPage() {
                 className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm resize-none"
                 placeholder="Any additional notes about this open house..."
               />
+            </div>
+            {/* Property details for visitor sign-in screen */}
+            <div className="sm:col-span-2 border-t border-navy-700 pt-4">
+              <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-3">Property Details <span className="text-navy-600 font-normal normal-case">(shown on visitor sign-in screen)</span></p>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">List Price</label>
+              <input type="number" min="0" value={form.price} onChange={(e) => f('price', e.target.value)}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
+                placeholder="450000" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">Sq Ft</label>
+              <input type="number" min="0" value={form.sqft} onChange={(e) => f('sqft', e.target.value)}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
+                placeholder="1800" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">Beds</label>
+              <input type="number" min="0" value={form.beds} onChange={(e) => f('beds', e.target.value)}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
+                placeholder="3" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">Baths</label>
+              <input type="number" min="0" step="0.5" value={form.baths} onChange={(e) => f('baths', e.target.value)}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
+                placeholder="2.5" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">Property Description</label>
+              <textarea value={form.description} onChange={(e) => f('description', e.target.value)} rows={3}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm resize-none"
+                placeholder="Charming 3BR colonial with updated kitchen, hardwood floors throughout…" />
             </div>
           </div>
           {error && <p className="text-red-400 text-sm mt-4">{error}</p>}

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Home } from 'lucide-react';
+import { Home, Bed, Bath, Ruler, ChevronRight } from 'lucide-react';
 
 const CHECKBOXES = [
   { name: 'hasHomeToBuy', label: "I'm looking to buy a home" },
@@ -13,27 +13,48 @@ const CHECKBOXES = [
 
 type CheckboxKey = (typeof CHECKBOXES)[number]['name'];
 
+interface HouseInfo {
+  id: number;
+  address: string;
+  city: string;
+  neighborhood: string | null;
+  date: string;
+  start_time: string | null;
+  end_time: string | null;
+  price: number | null;
+  beds: number | null;
+  baths: number | null;
+  sqft: number | null;
+  description: string | null;
+}
+
+function formatTime(hhmm: string): string {
+  const [h, m] = hhmm.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 export default function SignInPage() {
   const { id } = useParams();
+  const [house, setHouse] = useState<HouseInfo | null>(null);
+  const [step, setStep] = useState<'property' | 'form'>('property');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({
-    firstName: '',
-    lastName: '',
-    phone: '',
-    email: '',
-    hasHomeToBuy: false,
-    hasHomeToSell: false,
-    isPreApproved: false,
-    workingWithAgent: false,
-    agentName: '',
-    agentPhone: '',
-    agentEmail: '',
-    agentBrokerage: '',
+    firstName: '', lastName: '', phone: '', email: '',
+    hasHomeToBuy: false, hasHomeToSell: false,
+    isPreApproved: false, workingWithAgent: false,
+    agentName: '', agentPhone: '', agentEmail: '', agentBrokerage: '',
   });
 
-  function handleText(e: React.ChangeEvent<HTMLInputElement>) {
+  useEffect(() => {
+    fetch(`/api/open-house-info/${id}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then(setHouse);
+  }, [id]);
+
+  function handleText(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
   }
 
@@ -65,10 +86,7 @@ export default function SignInPage() {
       body: JSON.stringify({ ...form, openHouseId: id }),
     });
     setLoading(false);
-    if (!res.ok) {
-      setError('Something went wrong. Please try again.');
-      return;
-    }
+    if (!res.ok) { setError('Something went wrong. Please try again.'); return; }
     setSubmitted(true);
   }
 
@@ -80,9 +98,7 @@ export default function SignInPage() {
             <Home className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold">Thanks for stopping by!</h1>
-          <p className="text-gray-500">
-            You&apos;ll hear from Ben shortly. Keep an eye on your texts!
-          </p>
+          <p className="text-gray-500">You&apos;ll hear from Ben shortly. Keep an eye on your texts!</p>
         </div>
       </div>
     );
@@ -91,28 +107,114 @@ export default function SignInPage() {
   const inputClass = "w-full bg-white border border-gray-300 rounded-lg px-4 py-3 text-black placeholder-gray-400 focus:outline-none focus:border-black text-sm";
   const agentInputClass = "w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2.5 text-black placeholder-gray-400 focus:outline-none focus:border-black text-xs";
 
+  // ── Property Info Screen ──────────────────────────────────────────────────
+  if (step === 'property') {
+    return (
+      <div className="min-h-screen bg-white text-black">
+        <div className="max-w-md mx-auto p-6">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center flex-shrink-0">
+              <Home className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Open House</p>
+              <h1 className="text-lg font-bold leading-tight">{house?.address || '…'}</h1>
+            </div>
+          </div>
+
+          {house && (
+            <>
+              {/* Date/time bar */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-5 flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-700">
+                  {new Date(house.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}
+                </span>
+                {(house.start_time || house.end_time) && (
+                  <span className="text-gray-500">
+                    {house.start_time ? formatTime(house.start_time) : ''}{house.end_time ? ` – ${formatTime(house.end_time)}` : ''}
+                  </span>
+                )}
+              </div>
+
+              {/* Price & stats */}
+              {(house.price || house.beds || house.baths || house.sqft) && (
+                <div className="mb-5">
+                  {house.price && (
+                    <p className="text-3xl font-bold mb-3">${house.price.toLocaleString()}</p>
+                  )}
+                  <div className="flex gap-4">
+                    {house.beds && (
+                      <div className="flex items-center gap-1.5 text-gray-700 text-sm">
+                        <Bed className="w-4 h-4 text-gray-400" />
+                        <span className="font-semibold">{house.beds}</span>
+                        <span className="text-gray-400">bed{house.beds !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                    {house.baths && (
+                      <div className="flex items-center gap-1.5 text-gray-700 text-sm">
+                        <Bath className="w-4 h-4 text-gray-400" />
+                        <span className="font-semibold">{house.baths}</span>
+                        <span className="text-gray-400">bath{house.baths !== 1 ? 's' : ''}</span>
+                      </div>
+                    )}
+                    {house.sqft && (
+                      <div className="flex items-center gap-1.5 text-gray-700 text-sm">
+                        <Ruler className="w-4 h-4 text-gray-400" />
+                        <span className="font-semibold">{house.sqft.toLocaleString()}</span>
+                        <span className="text-gray-400">sq ft</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Description */}
+              {house.description && (
+                <div className="mb-6">
+                  <p className="text-sm text-gray-700 leading-relaxed">{house.description}</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* CTA */}
+          <button
+            onClick={() => setStep('form')}
+            className="w-full bg-black hover:bg-gray-800 text-white font-bold py-4 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            Sign In to Get Updates
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <p className="text-xs text-center text-gray-400 mt-3">
+            Takes 30 seconds · Your info stays private
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Sign-In Form ──────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-white text-black p-6">
       <div className="max-w-md mx-auto">
-        <div className="mb-8">
-          <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center mb-4">
-            <Home className="w-5 h-5 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold">Welcome!</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Sign in to get property details &amp; updates from Ben.
-          </p>
+        <div className="mb-6">
+          <button onClick={() => setStep('property')} className="text-xs text-gray-400 hover:text-black mb-4 flex items-center gap-1">
+            ← Back to property
+          </button>
+          <h1 className="text-2xl font-bold">Sign In</h1>
+          <p className="text-gray-500 text-sm mt-1">{house?.address}</p>
         </div>
 
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <input name="firstName" placeholder="First Name" value={form.firstName} onChange={handleText} className={inputClass} />
-            <input name="lastName" placeholder="Last Name" value={form.lastName} onChange={handleText} className={inputClass} />
+            <input name="firstName" placeholder="First Name *" value={form.firstName} onChange={handleText} className={inputClass} />
+            <input name="lastName" placeholder="Last Name *" value={form.lastName} onChange={handleText} className={inputClass} />
           </div>
           {!form.workingWithAgent && (
             <>
-              <input name="phone" placeholder="Phone Number" type="tel" value={form.phone} onChange={handleText} className={inputClass} />
-              <input name="email" placeholder="Email Address" type="email" value={form.email} onChange={handleText} className={inputClass} />
+              <input name="phone" placeholder="Phone Number *" type="tel" value={form.phone} onChange={handleText} className={inputClass} />
+              <input name="email" placeholder="Email Address *" type="email" value={form.email} onChange={handleText} className={inputClass} />
             </>
           )}
 
@@ -135,7 +237,6 @@ export default function SignInPage() {
                   </div>
                   <span className="text-sm text-gray-700">{label}</span>
                 </label>
-
                 {name === 'workingWithAgent' && form.workingWithAgent && (
                   <div className="mt-3 ml-8 space-y-2">
                     <p className="text-xs text-gray-400 mb-2">Agent&apos;s info <span className="text-black font-semibold">(required)</span></p>
@@ -155,7 +256,7 @@ export default function SignInPage() {
 
           <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-1">
             <p className="text-xs text-gray-500 leading-relaxed">
-              <span className="font-semibold text-gray-700">Privacy Notice:</span> The personal information you provide on this sign-in sheet is collected solely for the purpose of property follow-up and visitor log compliance. Your contact details will be shared only with the homeowner and listing agent as required for the security and documentation of this showing. Your information will not be sold, distributed, or used for any purpose unrelated to this property.
+              <span className="font-semibold text-gray-700">Privacy Notice:</span> The personal information you provide is collected solely for property follow-up and visitor log compliance. Your contact details will be shared only with the homeowner and listing agent. Your information will not be sold or used for any unrelated purpose.
             </p>
           </div>
 
@@ -166,7 +267,6 @@ export default function SignInPage() {
           >
             {loading ? 'Submitting…' : 'Sign In'}
           </button>
-
           <p className="text-xs text-center text-gray-400 pb-4">
             By signing in you acknowledge the privacy notice above.
           </p>
