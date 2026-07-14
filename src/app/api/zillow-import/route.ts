@@ -46,8 +46,8 @@ export async function POST(request: NextRequest) {
   const marker = '<script id="__NEXT_DATA__" type="application/json">';
   const startIdx = html.indexOf(marker);
   const endIdx = startIdx !== -1 ? html.indexOf('</script>', startIdx + marker.length) : -1;
-  const match = startIdx !== -1 && endIdx !== -1 ? [null, html.slice(startIdx + marker.length, endIdx)] : null;
-  if (!match) {
+  const jsonStr = startIdx !== -1 && endIdx !== -1 ? html.slice(startIdx + marker.length, endIdx) : null;
+  if (!jsonStr) {
     return NextResponse.json(
       { error: 'Could not parse Zillow page — Zillow may have blocked the request. Enter details manually.' },
       { status: 422 },
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   let data: Record<string, unknown>;
   try {
-    data = JSON.parse(match[1]);
+    data = JSON.parse(jsonStr);
   } catch {
     return NextResponse.json({ error: 'Failed to parse Zillow data.' }, { status: 422 });
   }
