@@ -42,8 +42,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Extract embedded JSON from __NEXT_DATA__ script tag
-  const match = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.+?)<\/script>/s);
+  // Extract embedded JSON from __NEXT_DATA__ script tag (avoid /s dotall flag for ES2017 compat)
+  const marker = '<script id="__NEXT_DATA__" type="application/json">';
+  const startIdx = html.indexOf(marker);
+  const endIdx = startIdx !== -1 ? html.indexOf('</script>', startIdx + marker.length) : -1;
+  const match = startIdx !== -1 && endIdx !== -1 ? [null, html.slice(startIdx + marker.length, endIdx)] : null;
   if (!match) {
     return NextResponse.json(
       { error: 'Could not parse Zillow page — Zillow may have blocked the request. Enter details manually.' },
