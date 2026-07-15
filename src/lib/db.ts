@@ -111,6 +111,31 @@ const SCHEMA = `
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS checklist_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL DEFAULT 'daily_leadgen',
+    label TEXT NOT NULL,
+    description TEXT,
+    is_dynamic INTEGER NOT NULL DEFAULT 0,
+    dynamic_key TEXT,
+    frequency TEXT NOT NULL DEFAULT 'daily',
+    day_of_week TEXT,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS checklist_completions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    checklist_item_id INTEGER NOT NULL REFERENCES checklist_items(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    completed INTEGER NOT NULL DEFAULT 1,
+    completed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, checklist_item_id, date)
+  );
+
   CREATE TABLE IF NOT EXISTS user_crm_settings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
