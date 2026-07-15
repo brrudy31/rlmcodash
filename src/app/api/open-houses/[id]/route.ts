@@ -7,7 +7,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   const body = await request.json();
-  const { date, address, neighborhood, city, start_time, end_time, total_attendees, neighbors, represented_buyers, unrepresented_buyers, notes, price, beds, baths, sqft, description } = body;
+  const { date, address, neighborhood, city, start_time, end_time, total_attendees, neighbors, represented_buyers, unrepresented_buyers, notes, price, beds, baths, sqft, description, list_date } = body;
   if (!date || !address?.trim() || !city?.trim()) {
     return NextResponse.json({ error: 'Date, address, and city are required' }, { status: 400 });
   }
@@ -16,9 +16,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   await db.execute({
     sql: `UPDATE open_houses SET date = ?, address = ?, neighborhood = ?, city = ?, start_time = ?, end_time = ?,
           total_attendees = ?, neighbors = ?, represented_buyers = ?, unrepresented_buyers = ?, notes = ?,
-          price = ?, beds = ?, baths = ?, sqft = ?, description = ?
+          price = ?, beds = ?, baths = ?, sqft = ?, description = ?, list_date = ?
           WHERE id = ? AND user_id = ?`,
-    args: [date, address.trim(), neighborhood?.trim() || null, city.trim(), start_time || null, end_time || null, Number(total_attendees) || 0, Number(neighbors) || 0, Number(represented_buyers) || 0, Number(unrepresented_buyers) || 0, notes?.trim() || null, price || null, beds || null, baths || null, sqft || null, description?.trim() || null, id, userId],
+    args: [date, address.trim(), neighborhood?.trim() || null, city.trim(), start_time || null, end_time || null, Number(total_attendees) || 0, Number(neighbors) || 0, Number(represented_buyers) || 0, Number(unrepresented_buyers) || 0, notes?.trim() || null, price || null, beds || null, baths || null, sqft || null, description?.trim() || null, list_date || null, id, userId],
   });
   const { rows } = await db.execute({
     sql: `SELECT oh.*,

@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw, Radio, Link2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw, Radio, Link2, PhoneCall } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
@@ -24,8 +24,15 @@ interface SignIn {
 const emptyForm = {
   date: '', address: '', neighborhood: '', city: '', start_time: '', end_time: '',
   total_attendees: '', neighbors: '', represented_buyers: '', unrepresented_buyers: '', notes: '',
-  price: '', beds: '', baths: '', sqft: '', description: '',
+  price: '', beds: '', baths: '', sqft: '', description: '', list_date: '',
 };
+
+interface CanvassData {
+  total_called: number;
+  total_answered: number;
+  total_engaged: number;
+  notes: string | null;
+}
 
 type SortKey = keyof OpenHouse;
 
@@ -48,6 +55,10 @@ export default function OpenHousesPage() {
   const [zillowUrl, setZillowUrl] = useState('');
   const [zillowLoading, setZillowLoading] = useState(false);
   const [zillowError, setZillowError] = useState('');
+  const [canvassHouse, setCanvassHouse] = useState<OpenHouse | null>(null);
+  const [canvassForm, setCanvassForm] = useState({ total_called: '', total_answered: '', total_engaged: '', notes: '' });
+  const [canvassData, setCanvassData] = useState<CanvassData | null>(null);
+  const [canvassSaving, setCanvassSaving] = useState(false);
 
   async function load() {
     const data = await fetch('/api/open-houses').then((r) => r.json());
@@ -67,6 +78,35 @@ export default function OpenHousesPage() {
     if (av > bv) return sort.dir === 'asc' ? 1 : -1;
     return 0;
   });
+
+  async function openCanvass(h: OpenHouse) {
+    const data = await fetch(`/api/open-houses/${h.id}/canvass`).then((r) => r.json());
+    setCanvassData(data);
+    setCanvassForm({
+      total_called: data ? String(data.total_called) : '',
+      total_answered: data ? String(data.total_answered) : '',
+      total_engaged: data ? String(data.total_engaged) : '',
+      notes: data?.notes || '',
+    });
+    setCanvassHouse(h);
+  }
+
+  async function saveCanvass() {
+    if (!canvassHouse) return;
+    setCanvassSaving(true);
+    await fetch(`/api/open-houses/${canvassHouse.id}/canvass`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        total_called: Number(canvassForm.total_called) || 0,
+        total_answered: Number(canvassForm.total_answered) || 0,
+        total_engaged: Number(canvassForm.total_engaged) || 0,
+        notes: canvassForm.notes,
+      }),
+    });
+    setCanvassSaving(false);
+    setCanvassHouse(null);
+  }
 
   function openAdd() {
     setForm({ ...emptyForm, date: new Date().toISOString().split('T')[0] });
@@ -88,6 +128,7 @@ export default function OpenHousesPage() {
       baths: hh.baths ? String(hh.baths) : '',
       sqft: hh.sqft ? String(hh.sqft) : '',
       description: hh.description || '',
+      list_date: hh.list_date || '',
     });
     setError(''); setZillowUrl(''); setZillowError(''); setModal('edit');
   }
@@ -107,6 +148,7 @@ export default function OpenHousesPage() {
       baths: form.baths ? Number(form.baths) : null,
       sqft: form.sqft ? Number(form.sqft) : null,
       description: form.description || null,
+      list_date: form.list_date || null,
     };
     const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
     const data = await res.json();
@@ -201,6 +243,12 @@ export default function OpenHousesPage() {
 
   const f = (key: keyof typeof form, value: string) => setForm((p) => ({ ...p, [key]: value }));
 
+  function calcDom(listDate: string | null): number | null {
+    if (!listDate) return null;
+    const ms = Date.now() - new Date(listDate + 'T12:00:00').getTime();
+    return Math.max(0, Math.floor(ms / (24 * 60 * 60 * 1000)));
+  }
+
   function formatTime(hhmm: string): string {
     if (!hhmm) return '—';
     const [h, m] = hhmm.split(':').map(Number);
@@ -228,6 +276,7 @@ export default function OpenHousesPage() {
               <tr className="border-b border-navy-700">
                 <Th label="Date" k="date" />
                 <Th label="Address" k="address" />
+                <th className="text-left px-4 py-3 text-navy-400 font-medium text-sm">DOM</th>
                 <Th label="Neighborhood" k="neighborhood" />
                 <Th label="City" k="city" />
                 <Th label="Start" k="start_time" />
@@ -247,6 +296,9 @@ export default function OpenHousesPage() {
                 <tr key={h.id} className="border-b border-navy-750 hover:bg-navy-750/50 transition-colors">
                   <td className="px-4 py-3 text-white whitespace-nowrap">{new Date(h.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                   <td className="px-4 py-3 text-navy-300 max-w-xs truncate">{h.address}</td>
+                  <td className="px-4 py-3 text-xs text-center">
+                    {(() => { const dom = calcDom((h as any).list_date); return dom !== null ? <span className={`font-semibold ${dom > 30 ? 'text-red-400' : dom > 14 ? 'text-yellow-400' : 'text-green-400'}`}>{dom}d</span> : <span className="text-navy-600">—</span>; })()}
+                  </td>
                   <td className="px-4 py-3 text-navy-300">{h.neighborhood || '—'}</td>
                   <td className="px-4 py-3 text-navy-300">{h.city}</td>
                   <td className="px-4 py-3 text-navy-300 whitespace-nowrap text-xs">{h.start_time ? formatTime(h.start_time) : '—'}</td>
@@ -259,6 +311,9 @@ export default function OpenHousesPage() {
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => router.push(`/dashboard/open-houses/${h.id}/live`)} title="Live hot-lead dashboard" className="p-1.5 text-navy-400 hover:text-green-400 hover:bg-green-400/10 rounded transition-colors">
                         <Radio className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => openCanvass(h)} title="Neighbor canvassing" className="p-1.5 text-navy-400 hover:text-purple-400 hover:bg-purple-400/10 rounded transition-colors">
+                        <PhoneCall className="w-4 h-4" />
                       </button>
                       <button onClick={() => setQrHouse(h)} title="Sign-in QR code" className="p-1.5 text-navy-400 hover:text-gold-400 hover:bg-navy-700 rounded transition-colors">
                         <QrCode className="w-4 h-4" />
@@ -381,6 +436,11 @@ export default function OpenHousesPage() {
               {zillowError && <p className="text-red-400 text-xs mb-3">{zillowError}</p>}
             </div>
             <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">List Date <span className="text-navy-600 font-normal">(for Days on Market)</span></label>
+              <input type="date" value={form.list_date} onChange={(e) => f('list_date', e.target.value)}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-500 text-sm" />
+            </div>
+            <div>
               <label className="block text-xs font-medium text-navy-400 mb-1.5">List Price</label>
               <input type="number" min="0" value={form.price} onChange={(e) => f('price', e.target.value)}
                 className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
@@ -458,6 +518,47 @@ export default function OpenHousesPage() {
       })()}
 
       {/* Sign-Ins Modal */}
+      {/* Neighbor Canvass Modal */}
+      {canvassHouse && (
+        <Modal title={`Neighbor Canvassing — ${canvassHouse.address}`} onClose={() => setCanvassHouse(null)} size="sm">
+          <div className="space-y-4">
+            <p className="text-navy-400 text-xs">Track how many neighbors you called before/after this open house and who showed real interest.</p>
+            {(['total_called', 'total_answered', 'total_engaged'] as const).map((key) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-navy-400 mb-1.5">
+                  {key === 'total_called' ? 'Total Called' : key === 'total_answered' ? 'Total Answered' : 'Engaged (real interest)'}
+                </label>
+                <input type="number" min="0" value={canvassForm[key]}
+                  onChange={(e) => setCanvassForm((p) => ({ ...p, [key]: e.target.value }))}
+                  className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-500 text-sm"
+                  placeholder="0" />
+              </div>
+            ))}
+            {canvassForm.total_answered && Number(canvassForm.total_answered) > 0 && (
+              <div className="bg-navy-750 border border-navy-700 rounded-lg px-4 py-3 text-center">
+                <p className="text-xs text-navy-400 mb-0.5">Engagement Rate</p>
+                <p className="text-2xl font-bold text-gold-400">
+                  {Math.round((Number(canvassForm.total_engaged) / Number(canvassForm.total_answered)) * 100)}%
+                </p>
+                <p className="text-xs text-navy-500">of those who answered showed real interest</p>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-navy-400 mb-1.5">Notes <span className="text-navy-600">(optional)</span></label>
+              <textarea value={canvassForm.notes} onChange={(e) => setCanvassForm((p) => ({ ...p, notes: e.target.value }))} rows={2}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm resize-none"
+                placeholder="Notable conversations, interested neighbors, etc." />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setCanvassHouse(null)} className="flex-1 border border-navy-600 text-navy-300 hover:text-white py-2.5 rounded-lg text-sm transition-colors">Cancel</button>
+              <button onClick={saveCanvass} disabled={canvassSaving} className="flex-1 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold py-2.5 rounded-lg text-sm transition-colors">
+                {canvassSaving ? 'Saving…' : 'Save Canvass'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       {signinsHouse && (
         <Modal title={`Sign-Ins — ${signinsHouse.address}`} onClose={() => { setSigninsHouse(null); setSyncResult(null); }} size="lg">
           {signins.length === 0 ? (

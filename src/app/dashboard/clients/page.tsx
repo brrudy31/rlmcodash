@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp, Phone, MessageSquare, Flame, Thermometer, Snowflake, CheckCircle, Home as HomeIcon } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 const STATUS_OPTIONS = [
@@ -14,6 +14,23 @@ const STATUS_OPTIONS = [
 
 function statusLabel(val: string | null) {
   return STATUS_OPTIONS.find((s) => s.value === (val ?? '')) ?? STATUS_OPTIONS[0];
+}
+
+function TempBadge({ temp }: { temp: string | null }) {
+  if (!temp) return null;
+  const map: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
+    hot:  { label: 'Hot',  icon: Flame,       cls: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
+    warm: { label: 'Warm', icon: Thermometer, cls: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
+    cold: { label: 'Cold', icon: Snowflake,   cls: 'text-blue-400 bg-blue-400/10 border-blue-400/30'   },
+  };
+  const m = map[temp];
+  if (!m) return null;
+  const Icon = m.icon;
+  return (
+    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-semibold ${m.cls}`}>
+      <Icon className="w-3 h-3" /> {m.label}
+    </span>
+  );
 }
 
 interface Contact {
@@ -31,6 +48,20 @@ interface Contact {
   agent_brokerage: string | null;
   opted_out_at: string | null;
   created_at: string;
+  contact_count: number;
+  last_contacted_at: string | null;
+  met_in_person: number;
+  homes_shown_count: number;
+  temperature: string | null;
+  temperature_override: number;
+}
+
+interface ContactLogEntry {
+  id: number;
+  type: string;
+  outcome: string;
+  notes: string | null;
+  logged_at: string;
 }
 
 interface OpenHouse {
@@ -39,12 +70,16 @@ interface OpenHouse {
   date: string;
 }
 
+const SOURCES = ['All', 'Open House', 'Team Referral', 'Other'] as const;
+type SourceFilter = (typeof SOURCES)[number];
+
 const empty = { name: '', email: '', phone: '', open_house_id: '' };
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
   const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('All');
   const [modal, setModal] = useState<'add' | 'edit' | null>(null);
   const [editing, setEditing] = useState<Contact | null>(null);
   const [form, setForm] = useState(empty);
@@ -52,6 +87,11 @@ export default function ContactsPage() {
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  // Contact log modal
+  const [logContact, setLogContact] = useState<Contact | null>(null);
+  const [logEntries, setLogEntries] = useState<ContactLogEntry[]>([]);
+  const [logForm, setLogForm] = useState({ type: 'call', outcome: 'no_answer', notes: '' });
+  const [logSaving, setLogSaving] = useState(false);
 
   async function load() {
     const [contactData, ohData] = await Promise.all([
@@ -64,14 +104,61 @@ export default function ContactsPage() {
 
   useEffect(() => { load(); }, []);
 
+  async function openLog(c: Contact) {
+    const data = await fetch(`/api/clients/${c.id}/contacts`).then((r) => r.json());
+    setLogEntries(Array.isArray(data) ? data : []);
+    setLogContact(c);
+    setLogForm({ type: 'call', outcome: 'no_answer', notes: '' });
+  }
+
+  async function addLogEntry() {
+    if (!logContact) return;
+    setLogSaving(true);
+    await fetch(`/api/clients/${logContact.id}/contacts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(logForm),
+    });
+    const data = await fetch(`/api/clients/${logContact.id}/contacts`).then((r) => r.json());
+    setLogEntries(Array.isArray(data) ? data : []);
+    setLogForm({ type: 'call', outcome: 'no_answer', notes: '' });
+    setLogSaving(false);
+    load(); // refresh temperature
+  }
+
+  async function setTemperature(c: Contact, temp: string | null) {
+    if (temp) {
+      await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ temperature: temp }) });
+    } else {
+      await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ temperature_override: false }) });
+    }
+    load();
+  }
+
+  async function toggleMet(c: Contact) {
+    await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ met_in_person: !c.met_in_person }) });
+    load();
+  }
+
+  async function updateHomesShown(c: Contact, n: number) {
+    await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ homes_shown_count: n }) });
+    load();
+  }
+
   const ohMap = Object.fromEntries(openHouses.map((h: OpenHouse) => [h.id, h]));
 
-  const filtered = contacts.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
+  // Filter by search + source tab
+  const filtered = contacts.filter((c) => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
-      (c.phone || '').includes(search)
-  );
+      (c.phone || '').includes(search);
+    if (!matchesSearch) return false;
+    if (sourceFilter === 'All') return true;
+    if (sourceFilter === 'Open House') return c.source === 'Open House';
+    if (sourceFilter === 'Team Referral') return c.source === 'team_referral';
+    if (sourceFilter === 'Other') return c.source !== 'Open House' && c.source !== 'team_referral';
+    return true;
+  });
 
   const fromOpenHouse = filtered.filter((c) => c.source === 'Open House');
   const represented = fromOpenHouse.filter((c) => c.working_with_agent);
@@ -112,12 +199,15 @@ export default function ContactsPage() {
   }
 
   async function updateStatus(id: number, status: string) {
-    await fetch(`/api/clients/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
+    await fetch(`/api/clients/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
     load();
+  }
+
+  function timeAgo(iso: string) {
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   }
 
   function ContactCard({ c }: { c: Contact }) {
@@ -128,30 +218,44 @@ export default function ContactsPage() {
 
     return (
       <div className="hover:bg-navy-750/40 transition-colors">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-9 h-9 rounded-full bg-navy-700 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-gold-400">
+        <div className="flex items-start gap-3 px-4 py-3">
+          <div className="w-9 h-9 rounded-full bg-navy-700 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-gold-400 mt-0.5">
             {c.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-white font-medium text-sm">{c.name}</p>
+              <TempBadge temp={c.temperature} />
               {oh && (
                 <span className="flex items-center gap-1 text-xs bg-gold-500/15 text-gold-400 border border-gold-500/30 px-2 py-0.5 rounded-full">
                   <Home className="w-3 h-3" /> {oh.address}
                 </span>
               )}
+              {c.met_in_person ? (
+                <span className="flex items-center gap-1 text-xs text-green-400"><CheckCircle className="w-3 h-3" /> Met</span>
+              ) : null}
               {c.opted_out_at && (
-                <span className="flex items-center gap-1 text-xs text-red-400">
-                  <UserX className="w-3 h-3" /> Opted Out
-                </span>
+                <span className="flex items-center gap-1 text-xs text-red-400"><UserX className="w-3 h-3" /> Opted Out</span>
               )}
             </div>
             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               <p className="text-navy-400 text-xs">{c.email}</p>
               {c.phone && <p className="text-navy-400 text-xs">{c.phone}</p>}
+              {c.contact_count > 0 && (
+                <p className="text-navy-500 text-xs">{c.contact_count} contact{c.contact_count !== 1 ? 's' : ''}{c.last_contacted_at ? ` · last ${timeAgo(c.last_contacted_at)}` : ''}</p>
+              )}
+              {c.homes_shown_count > 0 && (
+                <p className="text-navy-500 text-xs flex items-center gap-1"><HomeIcon className="w-3 h-3" /> {c.homes_shown_count} shown</p>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
+            {/* Homes shown quick +/- */}
+            <div className="flex items-center gap-0.5 bg-navy-750 border border-navy-600 rounded-lg px-1.5 py-1 text-xs">
+              <button onClick={() => updateHomesShown(c, Math.max(0, c.homes_shown_count - 1))} className="text-navy-400 hover:text-white w-4 h-4 flex items-center justify-center">−</button>
+              <span className="text-navy-300 w-5 text-center">{c.homes_shown_count}</span>
+              <button onClick={() => updateHomesShown(c, c.homes_shown_count + 1)} className="text-navy-400 hover:text-white w-4 h-4 flex items-center justify-center">+</button>
+            </div>
             <select
               value={c.status ?? ''}
               onChange={(e) => updateStatus(c.id, e.target.value)}
@@ -161,6 +265,13 @@ export default function ContactsPage() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+            <button
+              onClick={() => openLog(c)}
+              title="Log contact attempt"
+              className="p-1.5 text-navy-400 hover:text-gold-400 hover:bg-navy-700 rounded transition-colors"
+            >
+              <Phone className="w-4 h-4" />
+            </button>
             {hasAgent && (
               <button
                 onClick={() => setExpanded(isExpanded ? null : c.id)}
@@ -209,13 +320,16 @@ export default function ContactsPage() {
     );
   }
 
+  const outcomeColor = (o: string) =>
+    o === 'responded' ? 'text-green-400' : o === 'answered' ? 'text-yellow-400' : 'text-navy-500';
+
   return (
     <div className="p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Contacts</h2>
           <p className="text-navy-400 text-sm mt-1">
-            {contacts.length} total &middot; {represented.length} represented &middot; {unrepresented.length} unrepresented &middot; {contacts.filter((c) => c.opted_out_at).length} opted out
+            {contacts.length} total &middot; {contacts.filter((c) => c.source === 'Open House' && !c.working_with_agent).length} unrepresented &middot; {contacts.filter((c) => c.opted_out_at).length} opted out
           </p>
         </div>
         <button onClick={openAdd} className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
@@ -223,9 +337,10 @@ export default function ContactsPage() {
         </button>
       </div>
 
+      {/* Search + Source filter */}
       <div className="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden mb-6">
-        <div className="p-4">
-          <div className="relative">
+        <div className="p-4 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-navy-400 w-4 h-4" />
             <input
               type="text"
@@ -235,16 +350,129 @@ export default function ContactsPage() {
               className="w-full bg-navy-750 border border-navy-600 rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-navy-400 focus:outline-none focus:border-gold-500"
             />
           </div>
+          <div className="flex gap-1">
+            {SOURCES.map((s) => (
+              <button key={s} onClick={() => setSourceFilter(s)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sourceFilter === s ? 'bg-gold-500 text-navy-900' : 'bg-navy-750 text-navy-400 hover:text-white border border-navy-600'}`}>
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       <div className="space-y-6">
-        <Section title="Represented Buyers" accent="bg-navy-700/60 text-white" items={represented} emptyMsg="No represented buyers yet." />
-        <Section title="Unrepresented Buyers" accent="bg-blue-500/15 text-navy-300" items={unrepresented} emptyMsg="No unrepresented buyers yet." />
-        {manual.length > 0 && (
+        {(sourceFilter === 'All' || sourceFilter === 'Open House') && (
+          <>
+            <Section title="Represented Buyers" accent="bg-navy-700/60 text-white" items={represented} emptyMsg="No represented buyers yet." />
+            <Section title="Unrepresented Buyers" accent="bg-blue-500/15 text-navy-300" items={unrepresented} emptyMsg="No unrepresented buyers yet." />
+          </>
+        )}
+        {(sourceFilter === 'All' || sourceFilter === 'Team Referral' || sourceFilter === 'Other') && manual.length > 0 && (
           <Section title="Other Contacts" accent="bg-navy-600 text-navy-300" items={manual} emptyMsg="No other contacts." />
         )}
+        {filtered.length === 0 && (
+          <div className="bg-navy-800 rounded-xl border border-navy-700 p-12 text-center">
+            <p className="text-navy-500 text-sm">No contacts match your filters.</p>
+          </div>
+        )}
       </div>
+
+      {/* Contact Log Modal */}
+      {logContact && (
+        <Modal title={`Contact Log — ${logContact.name}`} onClose={() => setLogContact(null)} size="lg">
+          <div className="space-y-5">
+            {/* Temperature control */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-navy-400 text-xs font-medium">Temperature:</span>
+              {(['hot', 'warm', 'cold'] as const).map((t) => (
+                <button key={t} onClick={() => setTemperature(logContact, logContact.temperature === t && logContact.temperature_override ? null : t)}
+                  className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-all font-semibold capitalize
+                    ${logContact.temperature === t ? (t === 'hot' ? 'bg-orange-400/15 border-orange-400/50 text-orange-400' : t === 'warm' ? 'bg-yellow-400/15 border-yellow-400/50 text-yellow-400' : 'bg-blue-400/15 border-blue-400/50 text-blue-400') : 'bg-navy-750 border-navy-600 text-navy-400 hover:text-white'}`}>
+                  {t}
+                </button>
+              ))}
+              {logContact.temperature_override ? <span className="text-xs text-gold-400 italic">Manual override active</span> : <span className="text-xs text-navy-500 italic">Auto-calculated</span>}
+            </div>
+
+            {/* Met in person + homes shown */}
+            <div className="flex items-center gap-4 flex-wrap text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div onClick={() => { toggleMet(logContact); setLogContact((prev) => prev ? { ...prev, met_in_person: prev.met_in_person ? 0 : 1 } : prev); }}
+                  className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${logContact.met_in_person ? 'bg-white border-white' : 'border-navy-500'}`}>
+                  {Boolean(logContact.met_in_person) && <svg className="w-3 h-3 text-navy-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                </div>
+                <span className="text-navy-300">Met in person</span>
+              </label>
+              <div className="flex items-center gap-2 text-navy-300">
+                <HomeIcon className="w-4 h-4 text-navy-400" />
+                <span className="text-xs text-navy-400">Homes shown:</span>
+                <button onClick={() => { const n = Math.max(0, logContact.homes_shown_count - 1); updateHomesShown(logContact, n); setLogContact((p) => p ? { ...p, homes_shown_count: n } : p); }} className="text-navy-400 hover:text-white">−</button>
+                <span className="font-semibold">{logContact.homes_shown_count}</span>
+                <button onClick={() => { const n = logContact.homes_shown_count + 1; updateHomesShown(logContact, n); setLogContact((p) => p ? { ...p, homes_shown_count: n } : p); }} className="text-navy-400 hover:text-white">+</button>
+              </div>
+            </div>
+
+            {/* New log entry form */}
+            <div className="bg-navy-750 border border-navy-600 rounded-xl p-4">
+              <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-3">Log New Contact</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label className="text-xs text-navy-400 mb-1 block">Type</label>
+                  <select value={logForm.type} onChange={(e) => setLogForm((p) => ({ ...p, type: e.target.value }))}
+                    className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    <option value="call">📞 Call</option>
+                    <option value="text">💬 Text</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-navy-400 mb-1 block">Outcome</label>
+                  <select value={logForm.outcome} onChange={(e) => setLogForm((p) => ({ ...p, outcome: e.target.value }))}
+                    className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-gold-500">
+                    <option value="no_answer">No Answer</option>
+                    <option value="answered">Answered</option>
+                    <option value="responded">Responded ✓</option>
+                  </select>
+                </div>
+              </div>
+              <textarea value={logForm.notes} onChange={(e) => setLogForm((p) => ({ ...p, notes: e.target.value }))} rows={2}
+                placeholder="Notes (optional)..."
+                className="w-full bg-navy-800 border border-navy-600 rounded-lg px-3 py-2 text-white placeholder-navy-500 text-sm focus:outline-none focus:border-gold-500 resize-none mb-3" />
+              <button onClick={addLogEntry} disabled={logSaving}
+                className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold py-2 rounded-lg text-sm transition-colors">
+                {logSaving ? 'Logging…' : 'Log Contact'}
+              </button>
+            </div>
+
+            {/* Timeline */}
+            {logEntries.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-3">History ({logEntries.length})</p>
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {logEntries.map((e) => (
+                    <div key={e.id} className="flex items-start gap-3 bg-navy-750 border border-navy-700 rounded-lg px-3 py-2.5">
+                      <div className="flex-shrink-0 mt-0.5">
+                        {e.type === 'call' ? <Phone className="w-3.5 h-3.5 text-navy-400" /> : <MessageSquare className="w-3.5 h-3.5 text-navy-400" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white text-xs font-medium capitalize">{e.type}</span>
+                          <span className={`text-xs font-semibold capitalize ${outcomeColor(e.outcome)}`}>{e.outcome.replace('_', ' ')}</span>
+                        </div>
+                        {e.notes && <p className="text-navy-400 text-xs mt-0.5">{e.notes}</p>}
+                      </div>
+                      <span className="text-navy-600 text-xs flex-shrink-0">{new Date(e.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {logEntries.length === 0 && (
+              <p className="text-navy-500 text-xs text-center py-2">No contact history yet.</p>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {modal && (
         <Modal title={modal === 'add' ? 'Add Contact' : 'Edit Contact'} onClose={() => setModal(null)}>
@@ -269,11 +497,8 @@ export default function ContactsPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-navy-300 mb-1.5">Open House <span className="text-navy-500">(where you met them)</span></label>
-              <select
-                value={form.open_house_id}
-                onChange={(e) => setForm({ ...form, open_house_id: e.target.value })}
-                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold-500 text-sm"
-              >
+              <select value={form.open_house_id} onChange={(e) => setForm({ ...form, open_house_id: e.target.value })}
+                className="w-full bg-navy-750 border border-navy-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-gold-500 text-sm">
                 <option value="">— Not from an open house —</option>
                 {openHouses.map((h) => (
                   <option key={h.id} value={h.id}>

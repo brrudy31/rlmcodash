@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { openHouseId, firstName, lastName, phone, email, hasHomeToBuy, hasHomeToSell, isPreApproved, workingWithAgent, agentName, agentPhone, agentEmail, agentBrokerage } = body;
+  const { openHouseId, firstName, lastName, phone, email, hasHomeToBuy, hasHomeToSell, isPreApproved, workingWithAgent, agentName, agentPhone, agentEmail, agentBrokerage, leadSource } = body;
 
   if (!openHouseId || !firstName?.trim() || !lastName?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
     sql: `INSERT INTO open_house_signins
             (open_house_id, first_name, last_name, phone, email,
              has_home_to_buy, has_home_to_sell, is_pre_approved, working_with_agent,
-             agent_name, agent_phone, agent_email, agent_brokerage, lead_score)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [openHouseId, firstName.trim(), lastName.trim(), phone?.trim() || null, email?.trim() || null, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null, leadScore],
+             agent_name, agent_phone, agent_email, agent_brokerage, lead_score, lead_source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [openHouseId, firstName.trim(), lastName.trim(), phone?.trim() || null, email?.trim() || null, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null, leadScore, leadSource?.trim() || null],
   });
 
   // Upsert into contacts scoped to the open house owner

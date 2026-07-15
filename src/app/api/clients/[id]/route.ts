@@ -53,6 +53,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('status' in body) {
     await db.execute({ sql: 'UPDATE clients SET status = ? WHERE id = ? AND user_id = ?', args: [body.status || null, id, userId] });
   }
+  if ('temperature' in body) {
+    // Manual override — set flag so auto-calc stops
+    await db.execute({ sql: 'UPDATE clients SET temperature = ?, temperature_override = 1 WHERE id = ? AND user_id = ?', args: [body.temperature, id, userId] });
+  }
+  if ('temperature_override' in body && body.temperature_override === false) {
+    // Clear override — resume auto-calc
+    await db.execute({ sql: 'UPDATE clients SET temperature_override = 0 WHERE id = ? AND user_id = ?', args: [id, userId] });
+  }
+  if ('met_in_person' in body) {
+    await db.execute({ sql: 'UPDATE clients SET met_in_person = ?, met_date = ? WHERE id = ? AND user_id = ?', args: [body.met_in_person ? 1 : 0, body.met_in_person ? (body.met_date || new Date().toISOString().split('T')[0]) : null, id, userId] });
+  }
+  if ('homes_shown_count' in body) {
+    await db.execute({ sql: 'UPDATE clients SET homes_shown_count = ? WHERE id = ? AND user_id = ?', args: [Number(body.homes_shown_count) || 0, id, userId] });
+  }
   return NextResponse.json({ success: true });
 }
 

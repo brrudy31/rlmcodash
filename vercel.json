@@ -1,3 +1,13 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "crons": [
+    {
+      "path": "/api/cron/monthly-summary",
+      "schedule": "0 8 1 * *"
+    },
+    {
+      "path": "/api/cron/open-house-summary",
+      "schedule": "*/15 * * * *"
+    }
+  ]
 }

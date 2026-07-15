@@ -46,6 +46,7 @@ export default function SignInPage() {
     hasHomeToBuy: false, hasHomeToSell: false,
     isPreApproved: false, workingWithAgent: false,
     agentName: '', agentPhone: '', agentEmail: '', agentBrokerage: '',
+    leadSource: '',
   });
 
   useEffect(() => {
@@ -67,6 +68,10 @@ export default function SignInPage() {
       setError('Please enter your first and last name.');
       return;
     }
+    if (!form.leadSource) {
+      setError('Please select how you heard about this open house.');
+      return;
+    }
     if (form.workingWithAgent) {
       if (!form.agentName.trim() || !form.agentPhone.trim() || !form.agentEmail.trim()) {
         setError("Please enter your agent's name, phone, and email.");
@@ -83,7 +88,7 @@ export default function SignInPage() {
     const res = await fetch('/api/signin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, openHouseId: id }),
+      body: JSON.stringify({ ...form, openHouseId: id, leadSource: form.leadSource }),
     });
     setLoading(false);
     if (!res.ok) { setError('Something went wrong. Please try again.'); return; }
@@ -217,6 +222,21 @@ export default function SignInPage() {
               <input name="email" placeholder="Email Address *" type="email" value={form.email} onChange={handleText} className={inputClass} />
             </>
           )}
+
+          {/* How did you hear about this open house — required */}
+          <div>
+            <select
+              value={form.leadSource}
+              onChange={(e) => setForm((p) => ({ ...p, leadSource: e.target.value }))}
+              className={`${inputClass} ${!form.leadSource ? 'text-gray-400' : 'text-black'}`}
+              required
+            >
+              <option value="" disabled>How did you hear about us? *</option>
+              {['Zillow', 'Redfin', 'Agent', 'Sign', 'Flyer', 'Other'].map((s) => (
+                <option key={s} value={s} className="text-black">{s}</option>
+              ))}
+            </select>
+          </div>
 
           <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-1">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Quick questions</p>

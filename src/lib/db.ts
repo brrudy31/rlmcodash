@@ -111,6 +111,37 @@ const SCHEMA = `
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS contact_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL DEFAULT 'call',
+    outcome TEXT NOT NULL DEFAULT 'no_answer',
+    notes TEXT,
+    logged_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS neighbor_canvass (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    open_house_id INTEGER NOT NULL UNIQUE REFERENCES open_houses(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    total_called INTEGER NOT NULL DEFAULT 0,
+    total_answered INTEGER NOT NULL DEFAULT 0,
+    total_engaged INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS monthly_summaries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    month TEXT NOT NULL,
+    data_json TEXT NOT NULL,
+    email_sent_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(user_id, month)
+  );
+
   CREATE TABLE IF NOT EXISTS checklist_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -200,6 +231,18 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE door_knocking ADD COLUMN user_id INTEGER',
     'ALTER TABLE market_stats ADD COLUMN user_id INTEGER',
     'ALTER TABLE email_campaigns ADD COLUMN user_id INTEGER',
+    // Lead tracking extensions
+    'ALTER TABLE clients ADD COLUMN contact_count INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE clients ADD COLUMN last_contacted_at TEXT',
+    'ALTER TABLE clients ADD COLUMN met_in_person INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE clients ADD COLUMN met_date TEXT',
+    'ALTER TABLE clients ADD COLUMN homes_shown_count INTEGER NOT NULL DEFAULT 0',
+    'ALTER TABLE clients ADD COLUMN temperature TEXT',
+    'ALTER TABLE clients ADD COLUMN temperature_override INTEGER NOT NULL DEFAULT 0',
+    // Sign-in lead source
+    'ALTER TABLE open_house_signins ADD COLUMN lead_source TEXT',
+    // Open house list date for DOM
+    'ALTER TABLE open_houses ADD COLUMN list_date TEXT',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }
