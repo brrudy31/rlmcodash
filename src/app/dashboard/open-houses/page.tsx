@@ -209,6 +209,7 @@ export default function OpenHousesPage() {
       baths: data.baths ? String(data.baths) : p.baths,
       sqft: data.sqft ? String(data.sqft) : p.sqft,
       description: data.description || p.description,
+      list_date: data.list_date || p.list_date,
     }));
     setZillowUrl('');
   }

@@ -44,7 +44,17 @@ function parseProspects(html: string) {
       .replace(/\s+/g, ' ').trim().slice(0, 1500) || null;
   }
 
-  return { address, city, price, beds, baths, sqft, description };
+  // Listing date: "Listing Date\nJune 25, 2026" or "Listing Date</p><p>June 25, 2026"
+  let listDate: string | null = null;
+  const listingDateMatch = html.match(/Listing Date[^a-zA-Z0-9]*([A-Za-z]+ \d{1,2},?\s*\d{4})/i);
+  if (listingDateMatch) {
+    const parsed = new Date(listingDateMatch[1].replace(',', ''));
+    if (!isNaN(parsed.getTime())) {
+      listDate = parsed.toISOString().split('T')[0]; // YYYY-MM-DD
+    }
+  }
+
+  return { address, city, price, beds, baths, sqft, description, list_date: listDate };
 }
 
 // ── Zillow parser ─────────────────────────────────────────────────────────────
