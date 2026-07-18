@@ -243,6 +243,8 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE open_house_signins ADD COLUMN lead_source TEXT',
     // Open house list date for DOM
     'ALTER TABLE open_houses ADD COLUMN list_date TEXT',
+    // Client notes (preferences, appearance, conversation notes)
+    'ALTER TABLE clients ADD COLUMN notes TEXT',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }

@@ -54,6 +54,7 @@ interface Contact {
   homes_shown_count: number;
   temperature: string | null;
   temperature_override: number;
+  notes: string | null;
 }
 
 interface ContactLogEntry {
@@ -92,6 +93,8 @@ export default function ContactsPage() {
   const [logEntries, setLogEntries] = useState<ContactLogEntry[]>([]);
   const [logForm, setLogForm] = useState({ type: 'call', outcome: 'no_answer', notes: '' });
   const [logSaving, setLogSaving] = useState(false);
+  const [notesValue, setNotesValue] = useState('');
+  const [notesSaving, setNotesSaving] = useState(false);
 
   async function load() {
     const [contactData, ohData] = await Promise.all([
@@ -108,7 +111,19 @@ export default function ContactsPage() {
     const data = await fetch(`/api/clients/${c.id}/contacts`).then((r) => r.json());
     setLogEntries(Array.isArray(data) ? data : []);
     setLogContact(c);
+    setNotesValue(c.notes || '');
     setLogForm({ type: 'call', outcome: 'no_answer', notes: '' });
+  }
+
+  async function saveNotes(clientId: number, value: string) {
+    setNotesSaving(true);
+    await fetch(`/api/clients/${clientId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: value }),
+    });
+    setNotesSaving(false);
+    setContacts((prev) => prev.map((c) => c.id === clientId ? { ...c, notes: value || null } : c));
   }
 
   async function addLogEntry() {
@@ -246,6 +261,9 @@ export default function ContactsPage() {
               )}
               {c.homes_shown_count > 0 && (
                 <p className="text-navy-500 text-xs flex items-center gap-1"><HomeIcon className="w-3 h-3" /> {c.homes_shown_count} shown</p>
+              )}
+              {c.notes && (
+                <p className="text-navy-500 text-xs italic truncate max-w-xs">&ldquo;{c.notes}&rdquo;</p>
               )}
             </div>
           </div>
@@ -393,6 +411,22 @@ export default function ContactsPage() {
                 </button>
               ))}
               {logContact.temperature_override ? <span className="text-xs text-gold-400 italic">Manual override active</span> : <span className="text-xs text-navy-500 italic">Auto-calculated</span>}
+            </div>
+
+            {/* Client notes */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-navy-400 uppercase tracking-wide">Notes</label>
+                {notesSaving && <span className="text-xs text-navy-500 italic">Saving…</span>}
+              </div>
+              <textarea
+                value={notesValue}
+                onChange={(e) => setNotesValue(e.target.value)}
+                onBlur={() => logContact && saveNotes(logContact.id, notesValue)}
+                rows={4}
+                placeholder="Appearance, preferences, what they're looking for, conversation notes…"
+                className="w-full bg-navy-750 border border-navy-600 rounded-xl px-3 py-2.5 text-white placeholder-navy-500 text-sm focus:outline-none focus:border-gold-500 resize-none"
+              />
             </div>
 
             {/* Met in person + homes shown */}
