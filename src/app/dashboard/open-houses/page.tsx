@@ -420,7 +420,7 @@ export default function OpenHousesPage() {
                     value={zillowUrl}
                     onChange={(e) => { setZillowUrl(e.target.value); setZillowError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && importFromZillow()}
-                    placeholder="Paste Zillow listing URL to auto-fill…"
+                    placeholder="Paste Zillow or MLS Prospects URL to auto-fill…"
                     className="w-full bg-navy-750 border border-navy-600 rounded-lg pl-8 pr-3 py-2 text-white placeholder-navy-500 focus:outline-none focus:border-gold-500 text-xs"
                   />
                 </div>
