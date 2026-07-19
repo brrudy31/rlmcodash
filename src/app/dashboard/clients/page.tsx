@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp, Phone, MessageSquare, Flame, Thermometer, Snowflake, CheckCircle, Home as HomeIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp, Phone, MessageSquare, Flame, Thermometer, Snowflake, CheckCircle, Home as HomeIcon, UserCheck, UserMinus } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 const STATUS_OPTIONS = [
@@ -95,6 +95,7 @@ export default function ContactsPage() {
   const [logSaving, setLogSaving] = useState(false);
   const [notesValue, setNotesValue] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
+  const [showLost, setShowLost] = useState(false);
 
   async function load() {
     const [contactData, ohData] = await Promise.all([
@@ -150,6 +151,11 @@ export default function ContactsPage() {
     load();
   }
 
+  async function toggleRepresented(c: Contact) {
+    await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ working_with_agent: !c.working_with_agent }) });
+    load();
+  }
+
   async function toggleMet(c: Contact) {
     await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ met_in_person: !c.met_in_person }) });
     load();
@@ -162,8 +168,21 @@ export default function ContactsPage() {
 
   const ohMap = Object.fromEntries(openHouses.map((h: OpenHouse) => [h.id, h]));
 
+  // Active = not lost (unless showLost toggled on)
+  const activeContacts = contacts.filter((c) => showLost || c.status !== 'lost');
+  const lostCount = contacts.filter((c) => c.status === 'lost').length;
+
+  // Temperature analytics (active only)
+  const tempCounts = { hot: 0, warm: 0, cold: 0, none: 0 };
+  activeContacts.forEach((c) => {
+    if (c.temperature === 'hot') tempCounts.hot++;
+    else if (c.temperature === 'warm') tempCounts.warm++;
+    else if (c.temperature === 'cold') tempCounts.cold++;
+    else tempCounts.none++;
+  });
+
   // Filter by search + source tab
-  const filtered = contacts.filter((c) => {
+  const filtered = activeContacts.filter((c) => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.email.toLowerCase().includes(search.toLowerCase()) ||
       (c.phone || '').includes(search);
@@ -283,6 +302,15 @@ export default function ContactsPage() {
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>
+            {c.source === 'Open House' && (
+              <button
+                onClick={() => toggleRepresented(c)}
+                title={c.working_with_agent ? 'Mark as unrepresented' : 'Mark as represented'}
+                className={`p-1.5 rounded transition-colors ${c.working_with_agent ? 'text-purple-400 hover:text-navy-400 hover:bg-navy-700' : 'text-navy-400 hover:text-purple-400 hover:bg-navy-700'}`}
+              >
+                {c.working_with_agent ? <UserMinus className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+              </button>
+            )}
             <button
               onClick={() => openLog(c)}
               title="Log contact attempt"
@@ -347,13 +375,37 @@ export default function ContactsPage() {
         <div>
           <h2 className="text-2xl font-bold text-white">Contacts</h2>
           <p className="text-navy-400 text-sm mt-1">
-            {contacts.length} total &middot; {contacts.filter((c) => c.source === 'Open House' && !c.working_with_agent).length} unrepresented &middot; {contacts.filter((c) => c.opted_out_at).length} opted out
+            {activeContacts.length} active &middot; {activeContacts.filter((c) => c.source === 'Open House' && !c.working_with_agent).length} unrepresented
+            {lostCount > 0 && (
+              <button onClick={() => setShowLost((v) => !v)} className="ml-2 text-red-400/70 hover:text-red-400 underline underline-offset-2 transition-colors">
+                {showLost ? `hide ${lostCount} lost` : `+ ${lostCount} lost`}
+              </button>
+            )}
           </p>
         </div>
         <button onClick={openAdd} className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
           <Plus className="w-4 h-4" /> Add Contact
         </button>
       </div>
+
+      {/* Hot / Warm / Cold stat bar */}
+      {(tempCounts.hot + tempCounts.warm + tempCounts.cold) > 0 && (
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {([
+            { label: 'Hot Leads', count: tempCounts.hot, icon: Flame, cls: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/20' },
+            { label: 'Warm Leads', count: tempCounts.warm, icon: Thermometer, cls: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20' },
+            { label: 'Cold Leads', count: tempCounts.cold, icon: Snowflake, cls: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20' },
+          ] as const).map(({ label, count, icon: Icon, cls, bg }) => (
+            <div key={label} className={`rounded-xl border p-4 flex items-center gap-3 ${bg}`}>
+              <Icon className={`w-5 h-5 flex-shrink-0 ${cls}`} />
+              <div>
+                <p className={`text-2xl font-bold ${cls}`}>{count}</p>
+                <p className="text-navy-400 text-xs">{label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Search + Source filter */}
       <div className="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden mb-6">
