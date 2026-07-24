@@ -223,19 +223,28 @@ export default function SignInPage() {
             </>
           )}
 
-          {/* How did you hear about this open house — required */}
-          <div>
-            <select
-              value={form.leadSource}
-              onChange={(e) => setForm((p) => ({ ...p, leadSource: e.target.value }))}
-              className={`${inputClass} ${!form.leadSource ? 'text-gray-400' : 'text-black'}`}
-              required
-            >
-              <option value="" disabled>How did you hear about us? *</option>
-              {['Zillow', 'Redfin', 'Agent', 'Sign', 'Flyer', 'Other'].map((s) => (
-                <option key={s} value={s} className="text-black">{s}</option>
+          {/* How did you hear about this open house — required, prominent */}
+          <div className={`rounded-xl border-2 p-4 transition-colors ${form.leadSource ? 'border-black bg-gray-50' : 'border-black bg-black/5'}`}>
+            <p className="text-sm font-bold text-black mb-3">
+              How did you hear about this open house?
+              <span className="text-red-500 ml-1">*</span>
+            </p>
+            <div className="grid grid-cols-3 gap-2">
+              {['Zillow', 'Redfin', 'Sign', 'Flyer', 'Agent', 'Other'].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, leadSource: s }))}
+                  className={`py-2.5 px-3 rounded-lg text-sm font-semibold border-2 transition-all ${
+                    form.leadSource === s
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  {s}
+                </button>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-1">

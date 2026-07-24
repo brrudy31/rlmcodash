@@ -245,6 +245,8 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE open_houses ADD COLUMN list_date TEXT',
     // Client notes (preferences, appearance, conversation notes)
     'ALTER TABLE clients ADD COLUMN notes TEXT',
+    // Star rating 0-5 replacing hot/warm/cold
+    'ALTER TABLE clients ADD COLUMN lead_stars INTEGER',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }

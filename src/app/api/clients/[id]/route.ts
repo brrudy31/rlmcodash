@@ -67,6 +67,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('homes_shown_count' in body) {
     await db.execute({ sql: 'UPDATE clients SET homes_shown_count = ? WHERE id = ? AND user_id = ?', args: [Number(body.homes_shown_count) || 0, id, userId] });
   }
+  if ('lead_stars' in body) {
+    const stars = body.lead_stars === null ? null : Math.min(5, Math.max(0, Number(body.lead_stars)));
+    await db.execute({ sql: 'UPDATE clients SET lead_stars = ? WHERE id = ? AND user_id = ?', args: [stars, id, userId] });
+  }
   if ('working_with_agent' in body) {
     await db.execute({ sql: 'UPDATE clients SET working_with_agent = ? WHERE id = ? AND user_id = ?', args: [body.working_with_agent ? 1 : 0, id, userId] });
   }

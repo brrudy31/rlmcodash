@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp, Phone, MessageSquare, Flame, Thermometer, Snowflake, CheckCircle, Home as HomeIcon, UserCheck, UserMinus } from 'lucide-react';
+import { Plus, Pencil, Trash2, UserX, Search, Home, ChevronDown, ChevronUp, Phone, MessageSquare, CheckCircle, Home as HomeIcon, UserCheck, UserMinus, Star } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 const STATUS_OPTIONS = [
@@ -16,19 +16,28 @@ function statusLabel(val: string | null) {
   return STATUS_OPTIONS.find((s) => s.value === (val ?? '')) ?? STATUS_OPTIONS[0];
 }
 
-function TempBadge({ temp }: { temp: string | null }) {
-  if (!temp) return null;
-  const map: Record<string, { label: string; icon: React.ElementType; cls: string }> = {
-    hot:  { label: 'Hot',  icon: Flame,       cls: 'text-orange-400 bg-orange-400/10 border-orange-400/30' },
-    warm: { label: 'Warm', icon: Thermometer, cls: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' },
-    cold: { label: 'Cold', icon: Snowflake,   cls: 'text-blue-400 bg-blue-400/10 border-blue-400/30'   },
-  };
-  const m = map[temp];
-  if (!m) return null;
-  const Icon = m.icon;
+const STAR_LABELS: Record<number, string> = {
+  5: 'Knows what they want, actively engaging back & forth',
+  4: 'Knows a bit, just not ready yet',
+  3: 'Figuring it out, actually engaging in conversations',
+  2: 'Somewhat engaging — invite to sit down & explain the market',
+  1: 'Opening texts but not responding',
+  0: 'Has agent / wrong number / not reading messages',
+};
+
+function starColor(n: number) {
+  if (n >= 4) return 'text-orange-400';
+  if (n >= 2) return 'text-yellow-400';
+  return 'text-navy-500';
+}
+
+function StarBadge({ stars }: { stars: number | null }) {
+  if (stars === null) return null;
   return (
-    <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-semibold ${m.cls}`}>
-      <Icon className="w-3 h-3" /> {m.label}
+    <span className={`flex items-center gap-0.5 ${starColor(stars)}`} title={STAR_LABELS[stars]}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star key={i} className={`w-3 h-3 ${i < stars ? 'fill-current' : 'opacity-20'}`} />
+      ))}
     </span>
   );
 }
@@ -54,6 +63,7 @@ interface Contact {
   homes_shown_count: number;
   temperature: string | null;
   temperature_override: number;
+  lead_stars: number | null;
   notes: string | null;
 }
 
@@ -96,6 +106,7 @@ export default function ContactsPage() {
   const [notesValue, setNotesValue] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
   const [showLost, setShowLost] = useState(false);
+  const [hoverStar, setHoverStar] = useState<number | null>(null);
 
   async function load() {
     const [contactData, ohData] = await Promise.all([
@@ -142,13 +153,11 @@ export default function ContactsPage() {
     load(); // refresh temperature
   }
 
-  async function setTemperature(c: Contact, temp: string | null) {
-    if (temp) {
-      await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ temperature: temp }) });
-    } else {
-      await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ temperature_override: false }) });
-    }
-    load();
+  async function setStars(c: Contact, stars: number) {
+    const newVal = c.lead_stars === stars ? null : stars; // click same star to clear
+    await fetch(`/api/clients/${c.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lead_stars: newVal }) });
+    setLogContact((prev) => prev?.id === c.id ? { ...prev, lead_stars: newVal } : prev);
+    setContacts((prev) => prev.map((x) => x.id === c.id ? { ...x, lead_stars: newVal } : x));
   }
 
   async function toggleRepresented(c: Contact) {
@@ -172,14 +181,9 @@ export default function ContactsPage() {
   const activeContacts = contacts.filter((c) => showLost || c.status !== 'lost');
   const lostCount = contacts.filter((c) => c.status === 'lost').length;
 
-  // Temperature analytics (active only)
-  const tempCounts = { hot: 0, warm: 0, cold: 0, none: 0 };
-  activeContacts.forEach((c) => {
-    if (c.temperature === 'hot') tempCounts.hot++;
-    else if (c.temperature === 'warm') tempCounts.warm++;
-    else if (c.temperature === 'cold') tempCounts.cold++;
-    else tempCounts.none++;
-  });
+  // Star analytics (active only, rated contacts)
+  const starCounts = [0, 1, 2, 3, 4, 5].map((n) => ({ n, count: activeContacts.filter((c) => c.lead_stars === n).length }));
+  const ratedCount = activeContacts.filter((c) => c.lead_stars !== null).length;
 
   // Filter by search + source tab
   const filtered = activeContacts.filter((c) => {
@@ -259,7 +263,7 @@ export default function ContactsPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-white font-medium text-sm">{c.name}</p>
-              <TempBadge temp={c.temperature} />
+              <StarBadge stars={c.lead_stars} />
               {oh && (
                 <span className="flex items-center gap-1 text-xs bg-gold-500/15 text-gold-400 border border-gold-500/30 px-2 py-0.5 rounded-full">
                   <Home className="w-3 h-3" /> {oh.address}
@@ -388,22 +392,28 @@ export default function ContactsPage() {
         </button>
       </div>
 
-      {/* Hot / Warm / Cold stat bar */}
-      {(tempCounts.hot + tempCounts.warm + tempCounts.cold) > 0 && (
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {([
-            { label: 'Hot Leads', count: tempCounts.hot, icon: Flame, cls: 'text-orange-400', bg: 'bg-orange-400/10 border-orange-400/20' },
-            { label: 'Warm Leads', count: tempCounts.warm, icon: Thermometer, cls: 'text-yellow-400', bg: 'bg-yellow-400/10 border-yellow-400/20' },
-            { label: 'Cold Leads', count: tempCounts.cold, icon: Snowflake, cls: 'text-blue-400', bg: 'bg-blue-400/10 border-blue-400/20' },
-          ] as const).map(({ label, count, icon: Icon, cls, bg }) => (
-            <div key={label} className={`rounded-xl border p-4 flex items-center gap-3 ${bg}`}>
-              <Icon className={`w-5 h-5 flex-shrink-0 ${cls}`} />
-              <div>
-                <p className={`text-2xl font-bold ${cls}`}>{count}</p>
-                <p className="text-navy-400 text-xs">{label}</p>
-              </div>
-            </div>
-          ))}
+      {/* Star distribution bar */}
+      {ratedCount > 0 && (
+        <div className="bg-navy-800 border border-navy-700 rounded-xl p-4 mb-6">
+          <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-3">Lead Ratings</p>
+          <div className="flex items-end gap-2">
+            {[5, 4, 3, 2, 1, 0].map((n) => {
+              const cnt = starCounts.find((s) => s.n === n)?.count ?? 0;
+              const color = n >= 4 ? 'bg-orange-400' : n >= 2 ? 'bg-yellow-400' : 'bg-navy-600';
+              return (
+                <div key={n} className="flex-1 flex flex-col items-center gap-1">
+                  {cnt > 0 && <span className={`text-xs font-bold ${n >= 4 ? 'text-orange-400' : n >= 2 ? 'text-yellow-400' : 'text-navy-400'}`}>{cnt}</span>}
+                  <div className={`w-full rounded-sm ${color} transition-all`} style={{ height: cnt > 0 ? `${Math.max(4, cnt * 12)}px` : '4px', opacity: cnt > 0 ? 1 : 0.15 }} />
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: n || 1 }).map((_, i) => (
+                      <Star key={i} className={`w-2 h-2 fill-current ${n >= 4 ? 'text-orange-400' : n >= 2 ? 'text-yellow-400' : 'text-navy-600'}`} />
+                    ))}
+                    {n === 0 && <span className="text-navy-600 text-xs leading-none">0</span>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -452,17 +462,38 @@ export default function ContactsPage() {
       {logContact && (
         <Modal title={`Contact Log — ${logContact.name}`} onClose={() => setLogContact(null)} size="lg">
           <div className="space-y-5">
-            {/* Temperature control */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-navy-400 text-xs font-medium">Temperature:</span>
-              {(['hot', 'warm', 'cold'] as const).map((t) => (
-                <button key={t} onClick={() => setTemperature(logContact, logContact.temperature === t && logContact.temperature_override ? null : t)}
-                  className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border transition-all font-semibold capitalize
-                    ${logContact.temperature === t ? (t === 'hot' ? 'bg-orange-400/15 border-orange-400/50 text-orange-400' : t === 'warm' ? 'bg-yellow-400/15 border-yellow-400/50 text-yellow-400' : 'bg-blue-400/15 border-blue-400/50 text-blue-400') : 'bg-navy-750 border-navy-600 text-navy-400 hover:text-white'}`}>
-                  {t}
-                </button>
-              ))}
-              {logContact.temperature_override ? <span className="text-xs text-gold-400 italic">Manual override active</span> : <span className="text-xs text-navy-500 italic">Auto-calculated</span>}
+            {/* Star rating picker */}
+            <div>
+              <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Lead Rating</p>
+              <div className="flex items-center gap-1 mb-2" onMouseLeave={() => setHoverStar(null)}>
+                {[5, 4, 3, 2, 1, 0].map((n) => {
+                  const active = hoverStar !== null ? n <= hoverStar : logContact.lead_stars !== null && n <= logContact.lead_stars;
+                  const col = n >= 4 ? 'text-orange-400' : n >= 2 ? 'text-yellow-400' : 'text-navy-500';
+                  return (
+                    <button
+                      key={n}
+                      onMouseEnter={() => setHoverStar(n)}
+                      onClick={() => setStars(logContact, n)}
+                      title={`${n} star${n !== 1 ? 's' : ''} — ${STAR_LABELS[n]}`}
+                      className={`transition-transform hover:scale-110 ${active ? col : 'text-navy-700'}`}
+                    >
+                      <Star className={`w-6 h-6 ${active ? 'fill-current' : ''}`} />
+                    </button>
+                  );
+                })}
+                {logContact.lead_stars !== null && (
+                  <button onClick={async () => {
+                    await fetch(`/api/clients/${logContact.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lead_stars: null }) });
+                    setLogContact((p) => p ? { ...p, lead_stars: null } : p);
+                    setContacts((prev) => prev.map((x) => x.id === logContact.id ? { ...x, lead_stars: null } : x));
+                  }} className="ml-1 text-navy-600 hover:text-navy-400 text-xs">clear</button>
+                )}
+              </div>
+              {(hoverStar !== null || logContact.lead_stars !== null) && (
+                <p className="text-xs text-navy-400 italic">
+                  {STAR_LABELS[hoverStar ?? logContact.lead_stars!]}
+                </p>
+              )}
             </div>
 
             {/* Client notes */}
