@@ -7,13 +7,19 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
   const { name, email, phone } = await request.json();
-  if (!name?.trim() || !email?.trim()) {
-    return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+  if (!name?.trim()) {
+    return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
   await ensureSchema();
   const db = getDb();
+  // Only update email if a real one was provided; keep existing placeholder otherwise
+  const emailUpdate = email?.trim().toLowerCase() || null;
   try {
-    await db.execute({ sql: 'UPDATE clients SET name = ?, email = ?, phone = ? WHERE id = ? AND user_id = ?', args: [name.trim(), email.trim().toLowerCase(), phone?.trim() || null, id, userId] });
+    if (emailUpdate) {
+      await db.execute({ sql: 'UPDATE clients SET name = ?, email = ?, phone = ? WHERE id = ? AND user_id = ?', args: [name.trim(), emailUpdate, phone?.trim() || null, id, userId] });
+    } else {
+      await db.execute({ sql: 'UPDATE clients SET name = ?, phone = ? WHERE id = ? AND user_id = ?', args: [name.trim(), phone?.trim() || null, id, userId] });
+    }
     const { rows } = await db.execute({ sql: 'SELECT * FROM clients WHERE id = ? AND user_id = ?', args: [id, userId] });
     if (!rows[0]) return NextResponse.json({ error: 'Client not found' }, { status: 404 });
     return NextResponse.json(rows[0]);

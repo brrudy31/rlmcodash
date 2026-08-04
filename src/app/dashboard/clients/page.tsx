@@ -755,7 +755,7 @@ export default function ContactsPage() {
                 placeholder="Jane Smith" autoFocus />
             </div>
             <div>
-              <label className="block text-sm font-medium text-navy-300 mb-1.5">Email Address</label>
+              <label className="block text-sm font-medium text-navy-300 mb-1.5">Email Address <span className="text-navy-500 font-normal">(optional)</span></label>
               <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full bg-navy-750 border border-navy-600 rounded-lg px-4 py-2.5 text-white placeholder-navy-400 focus:outline-none focus:border-gold-500 text-sm"
                 placeholder="jane@example.com" />
@@ -781,7 +781,7 @@ export default function ContactsPage() {
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <div className="flex gap-3 pt-2">
               <button onClick={() => setModal(null)} className="flex-1 border border-navy-600 text-navy-300 hover:text-white hover:border-navy-500 py-2.5 rounded-lg text-sm transition-colors">Cancel</button>
-              <button onClick={save} disabled={saving || !form.name.trim() || !form.email.trim()}
+              <button onClick={save} disabled={saving || !form.name.trim()}
                 className="flex-1 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold py-2.5 rounded-lg text-sm transition-colors">
                 {saving ? 'Saving...' : modal === 'add' ? 'Add Contact' : 'Save Changes'}
               </button>
