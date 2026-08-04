@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { openHouseId, firstName, lastName, phone, email, hasHomeToBuy, hasHomeToSell, isPreApproved, workingWithAgent, agentName, agentPhone, agentEmail, agentBrokerage, leadSource } = body;
+  const { openHouseId, firstName, lastName, phone, email, hasHomeToBuy, hasHomeToSell, isPreApproved, workingWithAgent, agentName, agentPhone, agentEmail, agentBrokerage, leadSource, buyTimeline, budgetRange } = body;
 
   if (!openHouseId || !firstName?.trim() || !lastName?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
@@ -38,17 +38,18 @@ export async function POST(req: NextRequest) {
     sql: `INSERT INTO open_house_signins
             (open_house_id, first_name, last_name, phone, email,
              has_home_to_buy, has_home_to_sell, is_pre_approved, working_with_agent,
-             agent_name, agent_phone, agent_email, agent_brokerage, lead_score, lead_source)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [openHouseId, firstName.trim(), lastName.trim(), signinPhone, signinEmail, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null, leadScore, leadSource?.trim() || null],
+             agent_name, agent_phone, agent_email, agent_brokerage, lead_score, lead_source,
+             buy_timeline, budget_range)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [openHouseId, firstName.trim(), lastName.trim(), signinPhone, signinEmail, hasHomeToBuy ? 1 : 0, hasHomeToSell ? 1 : 0, isPreApproved ? 1 : 0, workingWithAgent ? 1 : 0, agentName?.trim() || null, agentPhone?.trim() || null, agentEmail?.trim() || null, agentBrokerage?.trim() || null, leadScore, leadSource?.trim() || null, buyTimeline?.trim() || null, budgetRange?.trim() || null],
   });
 
   // Upsert into contacts scoped to the open house owner
   const ownerUserId = house.user_id ?? null;
 
   await db.execute({
-    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage, working_with_agent, user_id)
-          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?, ?, ?)
+    sql: `INSERT INTO clients (name, email, phone, source, open_house_id, agent_name, agent_phone, agent_email, agent_brokerage, working_with_agent, user_id, signin_source, buy_timeline, budget_range)
+          VALUES (?, ?, ?, 'Open House', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             phone = COALESCE(excluded.phone, phone),
             source = COALESCE(source, 'Open House'),
@@ -57,7 +58,10 @@ export async function POST(req: NextRequest) {
             agent_phone = COALESCE(excluded.agent_phone, agent_phone),
             agent_email = COALESCE(excluded.agent_email, agent_email),
             agent_brokerage = COALESCE(excluded.agent_brokerage, agent_brokerage),
-            working_with_agent = COALESCE(excluded.working_with_agent, working_with_agent)`,
+            working_with_agent = COALESCE(excluded.working_with_agent, working_with_agent),
+            signin_source = COALESCE(excluded.signin_source, signin_source),
+            buy_timeline = COALESCE(excluded.buy_timeline, buy_timeline),
+            budget_range = COALESCE(excluded.budget_range, budget_range)`,
     args: [
       `${firstName.trim()} ${lastName.trim()}`,
       email?.trim().toLowerCase() || `noemail_${Date.now()}@placeholder.local`,
@@ -69,6 +73,9 @@ export async function POST(req: NextRequest) {
       agentBrokerage?.trim() || null,
       workingWithAgent ? 1 : 0,
       ownerUserId,
+      leadSource?.trim() || null,
+      buyTimeline?.trim() || null,
+      budgetRange?.trim() || null,
     ],
   });
 

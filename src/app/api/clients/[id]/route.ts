@@ -77,6 +77,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ('notes' in body) {
     await db.execute({ sql: 'UPDATE clients SET notes = ? WHERE id = ? AND user_id = ?', args: [body.notes?.trim() || null, id, userId] });
   }
+  if ('buy_timeline' in body) {
+    await db.execute({ sql: 'UPDATE clients SET buy_timeline = ? WHERE id = ? AND user_id = ?', args: [body.buy_timeline || null, id, userId] });
+  }
+  if ('budget_range' in body) {
+    await db.execute({ sql: 'UPDATE clients SET budget_range = ? WHERE id = ? AND user_id = ?', args: [body.budget_range || null, id, userId] });
+  }
   return NextResponse.json({ success: true });
 }
 

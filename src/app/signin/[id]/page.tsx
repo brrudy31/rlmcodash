@@ -46,7 +46,7 @@ export default function SignInPage() {
     hasHomeToBuy: false, hasHomeToSell: false,
     isPreApproved: false, workingWithAgent: false,
     agentName: '', agentPhone: '', agentEmail: '', agentBrokerage: '',
-    leadSource: '',
+    leadSource: '', buyTimeline: '', budgetRange: '',
   });
 
   useEffect(() => {
@@ -88,7 +88,7 @@ export default function SignInPage() {
     const res = await fetch('/api/signin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, openHouseId: id, leadSource: form.leadSource }),
+      body: JSON.stringify({ ...form, openHouseId: id, leadSource: form.leadSource, buyTimeline: form.buyTimeline, budgetRange: form.budgetRange }),
     });
     setLoading(false);
     if (!res.ok) { setError('Something went wrong. Please try again.'); return; }
@@ -310,6 +310,41 @@ export default function SignInPage() {
               </label>
             ))}
           </div>
+
+          {/* Buyer intent questions — only for unrepresented visitors */}
+          {!form.workingWithAgent && (
+            <>
+              <div className="border border-gray-200 rounded-xl p-4">
+                <p className="text-sm font-bold text-black mb-3">When are you looking to buy?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['ASAP / Under 3 months', '3–6 months', '6–12 months', 'Just browsing'].map((t) => (
+                    <button key={t} type="button"
+                      onClick={() => setForm((p) => ({ ...p, buyTimeline: p.buyTimeline === t ? '' : t }))}
+                      className={`py-2.5 px-3 rounded-lg text-sm font-medium border-2 transition-all text-left ${
+                        form.buyTimeline === t ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                      }`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border border-gray-200 rounded-xl p-4">
+                <p className="text-sm font-bold text-black mb-3">What&apos;s your budget range?</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Under $300K', '$300K–$500K', '$500K–$750K', '$750K+', 'Not sure'].map((b) => (
+                    <button key={b} type="button"
+                      onClick={() => setForm((p) => ({ ...p, budgetRange: p.budgetRange === b ? '' : b }))}
+                      className={`py-2.5 px-3 rounded-lg text-sm font-medium border-2 transition-all text-left ${
+                        form.budgetRange === b ? 'bg-black text-white border-black' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
+                      }`}>
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 

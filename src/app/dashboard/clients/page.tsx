@@ -65,6 +65,9 @@ interface Contact {
   temperature_override: number;
   lead_stars: number | null;
   notes: string | null;
+  buy_timeline: string | null;
+  budget_range: string | null;
+  signin_source: string | null;
 }
 
 interface ContactLogEntry {
@@ -81,8 +84,26 @@ interface OpenHouse {
   date: string;
 }
 
-const SOURCES = ['All', 'Open House', 'Team Referral', 'Other'] as const;
+const SOURCES = ['All', 'Open House', 'Team Referral', 'Other', 'Analytics'] as const;
 type SourceFilter = (typeof SOURCES)[number];
+
+const FOLLOWUP_DAYS: Record<number, number> = { 5: 1, 4: 3, 3: 7, 2: 14 };
+
+function getFollowUpStatus(c: Contact): { label: string; color: string } | null {
+  if (!c.lead_stars || c.lead_stars < 2) return null;
+  if (c.status === 'lost' || c.status === 'converted_buyer' || c.status === 'converted_seller') return null;
+  const interval = FOLLOWUP_DAYS[c.lead_stars] ?? 14;
+  if (!c.last_contacted_at || c.contact_count === 0) {
+    return { label: 'Never contacted — reach out now', color: 'text-red-400' };
+  }
+  const dueDate = new Date(new Date(c.last_contacted_at).getTime() + interval * 86400000);
+  const daysUntil = Math.floor((dueDate.getTime() - Date.now()) / 86400000);
+  if (daysUntil < 0) return { label: `Overdue ${Math.abs(daysUntil)}d`, color: 'text-red-400' };
+  if (daysUntil === 0) return { label: 'Follow up today', color: 'text-orange-400' };
+  if (daysUntil === 1) return { label: 'Follow up tomorrow', color: 'text-orange-400' };
+  if (daysUntil <= 5) return { label: `Follow up in ${daysUntil}d`, color: 'text-yellow-400' };
+  return null;
+}
 
 const empty = { name: '', email: '', phone: '', open_house_id: '' };
 
@@ -184,6 +205,17 @@ export default function ContactsPage() {
   // Star analytics (active only, rated contacts)
   const starCounts = [0, 1, 2, 3, 4, 5].map((n) => ({ n, count: activeContacts.filter((c) => c.lead_stars === n).length }));
   const ratedCount = activeContacts.filter((c) => c.lead_stars !== null).length;
+
+  // Source conversion analytics
+  const SIGNIN_SOURCES = ['Zillow', 'Redfin', 'Sign', 'Flyer', 'Agent', 'Other'];
+  const sourceAnalytics = SIGNIN_SOURCES.map((src) => {
+    const leads = activeContacts.filter((c) => c.signin_source === src);
+    const rated = leads.filter((c) => c.lead_stars !== null);
+    const avgStars = rated.length > 0 ? (rated.reduce((s, c) => s + c.lead_stars!, 0) / rated.length) : null;
+    const quality = leads.filter((c) => c.lead_stars !== null && c.lead_stars >= 3).length;
+    const converted = leads.filter((c) => c.status === 'converted_buyer' || c.status === 'converted_seller').length;
+    return { src, total: leads.length, avgStars, quality, converted };
+  }).filter((s) => s.total > 0);
 
   // Filter by search + source tab
   const filtered = activeContacts.filter((c) => {
@@ -288,6 +320,9 @@ export default function ContactsPage() {
               {c.notes && (
                 <p className="text-navy-500 text-xs italic truncate max-w-xs">&ldquo;{c.notes}&rdquo;</p>
               )}
+              {c.buy_timeline && <p className="text-navy-500 text-xs">🕐 {c.buy_timeline}</p>}
+              {c.budget_range && <p className="text-navy-500 text-xs">💰 {c.budget_range}</p>}
+              {(() => { const fu = getFollowUpStatus(c); return fu ? <p className={`text-xs font-semibold ${fu.color}`}>⚡ {fu.label}</p> : null; })()}
             </div>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 flex-wrap justify-end">
@@ -441,22 +476,129 @@ export default function ContactsPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        {(sourceFilter === 'All' || sourceFilter === 'Open House') && (
-          <>
-            <Section title="Represented Buyers" accent="bg-navy-700/60 text-white" items={represented} emptyMsg="No represented buyers yet." />
-            <Section title="Unrepresented Buyers" accent="bg-blue-500/15 text-navy-300" items={unrepresented} emptyMsg="No unrepresented buyers yet." />
-          </>
-        )}
-        {(sourceFilter === 'All' || sourceFilter === 'Team Referral' || sourceFilter === 'Other') && manual.length > 0 && (
-          <Section title="Other Contacts" accent="bg-navy-600 text-navy-300" items={manual} emptyMsg="No other contacts." />
-        )}
-        {filtered.length === 0 && (
-          <div className="bg-navy-800 rounded-xl border border-navy-700 p-12 text-center">
-            <p className="text-navy-500 text-sm">No contacts match your filters.</p>
+      {sourceFilter === 'Analytics' ? (
+        <div className="space-y-6">
+          {/* Source conversion table */}
+          <div className="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+            <div className="px-5 py-4 border-b border-navy-700">
+              <h3 className="text-sm font-semibold text-white">Lead Source Performance</h3>
+              <p className="text-xs text-navy-500 mt-0.5">How leads from each source convert into quality buyers</p>
+            </div>
+            {sourceAnalytics.length === 0 ? (
+              <p className="text-center py-10 text-navy-500 text-sm">No sign-in source data yet — data populates as people sign in at open houses.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-navy-700">
+                      <th className="text-left px-5 py-3 text-xs font-semibold text-navy-400 uppercase tracking-wide">Source</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-navy-400 uppercase tracking-wide">Leads</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-navy-400 uppercase tracking-wide">Avg ★</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-navy-400 uppercase tracking-wide">3★+ Quality</th>
+                      <th className="text-right px-5 py-3 text-xs font-semibold text-navy-400 uppercase tracking-wide">Converted</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-navy-750">
+                    {sourceAnalytics.sort((a, b) => (b.avgStars ?? 0) - (a.avgStars ?? 0)).map((row) => (
+                      <tr key={row.src} className="hover:bg-navy-750/40 transition-colors">
+                        <td className="px-5 py-3 font-medium text-white">{row.src}</td>
+                        <td className="px-4 py-3 text-right text-navy-300">{row.total}</td>
+                        <td className="px-4 py-3 text-right">
+                          {row.avgStars !== null ? (
+                            <span className={`font-semibold ${row.avgStars >= 4 ? 'text-orange-400' : row.avgStars >= 2.5 ? 'text-yellow-400' : 'text-navy-400'}`}>
+                              {row.avgStars.toFixed(1)}
+                            </span>
+                          ) : <span className="text-navy-600">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`font-semibold ${row.quality > 0 ? 'text-white' : 'text-navy-600'}`}>{row.quality}</span>
+                          <span className="text-navy-500 text-xs ml-1">
+                            {row.total > 0 ? `(${Math.round(row.quality / row.total * 100)}%)` : ''}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <span className={`font-semibold ${row.converted > 0 ? 'text-green-400' : 'text-navy-600'}`}>{row.converted}</span>
+                          <span className="text-navy-500 text-xs ml-1">
+                            {row.total > 0 && row.converted > 0 ? `(${Math.round(row.converted / row.total * 100)}%)` : ''}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* Follow-up urgency summary */}
+          {(() => {
+            const overdue = activeContacts.filter((c) => { const f = getFollowUpStatus(c); return f?.color === 'text-red-400'; });
+            const dueSoon = activeContacts.filter((c) => { const f = getFollowUpStatus(c); return f?.color === 'text-orange-400'; });
+            const upcoming = activeContacts.filter((c) => { const f = getFollowUpStatus(c); return f?.color === 'text-yellow-400'; });
+            if (!overdue.length && !dueSoon.length && !upcoming.length) return null;
+            return (
+              <div className="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+                <div className="px-5 py-4 border-b border-navy-700">
+                  <h3 className="text-sm font-semibold text-white">Follow-Up Priority</h3>
+                </div>
+                <div className="grid grid-cols-3 divide-x divide-navy-700">
+                  {[
+                    { label: 'Overdue', items: overdue, color: 'text-red-400' },
+                    { label: 'Due Today/Tomorrow', items: dueSoon, color: 'text-orange-400' },
+                    { label: 'Coming Up', items: upcoming, color: 'text-yellow-400' },
+                  ].map(({ label, items, color }) => (
+                    <div key={label} className="p-5">
+                      <p className={`text-2xl font-bold ${color}`}>{items.length}</p>
+                      <p className="text-navy-400 text-xs mt-0.5">{label}</p>
+                      {items.slice(0, 3).map((c) => (
+                        <p key={c.id} className="text-navy-300 text-xs mt-2 truncate">{c.name}</p>
+                      ))}
+                      {items.length > 3 && <p className="text-navy-600 text-xs mt-1">+{items.length - 3} more</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Buyer intent breakdown */}
+          {activeContacts.some((c) => c.buy_timeline) && (
+            <div className="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
+              <div className="px-5 py-4 border-b border-navy-700">
+                <h3 className="text-sm font-semibold text-white">Buyer Timeline Breakdown</h3>
+              </div>
+              <div className="p-5 grid grid-cols-2 gap-3">
+                {['ASAP / Under 3 months', '3–6 months', '6–12 months', 'Just browsing'].map((t) => {
+                  const count = activeContacts.filter((c) => c.buy_timeline === t).length;
+                  return (
+                    <div key={t} className="flex items-center justify-between bg-navy-750 border border-navy-700 rounded-lg px-3 py-2.5">
+                      <span className="text-navy-300 text-xs">{t}</span>
+                      <span className={`font-bold text-sm ${count > 0 ? 'text-white' : 'text-navy-600'}`}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {(sourceFilter === 'All' || sourceFilter === 'Open House') && (
+            <>
+              <Section title="Represented Buyers" accent="bg-navy-700/60 text-white" items={represented} emptyMsg="No represented buyers yet." />
+              <Section title="Unrepresented Buyers" accent="bg-blue-500/15 text-navy-300" items={unrepresented} emptyMsg="No unrepresented buyers yet." />
+            </>
+          )}
+          {(sourceFilter === 'All' || sourceFilter === 'Team Referral' || sourceFilter === 'Other') && manual.length > 0 && (
+            <Section title="Other Contacts" accent="bg-navy-600 text-navy-300" items={manual} emptyMsg="No other contacts." />
+          )}
+          {filtered.length === 0 && (
+            <div className="bg-navy-800 rounded-xl border border-navy-700 p-12 text-center">
+              <p className="text-navy-500 text-sm">No contacts match your filters.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Contact Log Modal */}
       {logContact && (
@@ -511,6 +653,18 @@ export default function ContactsPage() {
                 className="w-full bg-navy-750 border border-navy-600 rounded-xl px-3 py-2.5 text-white placeholder-navy-500 text-sm focus:outline-none focus:border-gold-500 resize-none"
               />
             </div>
+
+            {/* Buyer intent */}
+            {(logContact.buy_timeline || logContact.budget_range) && (
+              <div className="flex gap-3 flex-wrap">
+                {logContact.buy_timeline && (
+                  <span className="text-xs bg-navy-750 border border-navy-600 text-navy-300 px-3 py-1.5 rounded-full">🕐 {logContact.buy_timeline}</span>
+                )}
+                {logContact.budget_range && (
+                  <span className="text-xs bg-navy-750 border border-navy-600 text-navy-300 px-3 py-1.5 rounded-full">💰 {logContact.budget_range}</span>
+                )}
+              </div>
+            )}
 
             {/* Met in person + homes shown */}
             <div className="flex items-center gap-4 flex-wrap text-sm">

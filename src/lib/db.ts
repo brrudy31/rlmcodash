@@ -247,6 +247,13 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE clients ADD COLUMN notes TEXT',
     // Star rating 0-5 replacing hot/warm/cold
     'ALTER TABLE clients ADD COLUMN lead_stars INTEGER',
+    // Buyer intent (collected at sign-in)
+    'ALTER TABLE open_house_signins ADD COLUMN buy_timeline TEXT',
+    'ALTER TABLE open_house_signins ADD COLUMN budget_range TEXT',
+    'ALTER TABLE clients ADD COLUMN buy_timeline TEXT',
+    'ALTER TABLE clients ADD COLUMN budget_range TEXT',
+    // How they found the open house (Zillow/Sign/Flyer etc.) stored on client record
+    'ALTER TABLE clients ADD COLUMN signin_source TEXT',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }
