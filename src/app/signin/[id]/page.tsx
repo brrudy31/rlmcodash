@@ -78,8 +78,8 @@ export default function SignInPage() {
         return;
       }
     } else {
-      if (!form.phone.trim() || !form.email.trim()) {
-        setError('Please enter your phone number and email.');
+      if (!form.phone.trim()) {
+        setError('Please enter your phone number.');
         return;
       }
     }
@@ -219,7 +219,7 @@ export default function SignInPage() {
           {!form.workingWithAgent && (
             <>
               <input name="phone" placeholder="Phone Number *" type="tel" value={form.phone} onChange={handleText} className={inputClass} />
-              <input name="email" placeholder="Email Address *" type="email" value={form.email} onChange={handleText} className={inputClass} />
+              <input name="email" placeholder="Email Address (optional)" type="email" value={form.email} onChange={handleText} className={inputClass} />
             </>
           )}
 

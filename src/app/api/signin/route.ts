@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
   if (!openHouseId || !firstName?.trim() || !lastName?.trim()) {
     return NextResponse.json({ error: 'Name is required' }, { status: 400 });
   }
-  if (!workingWithAgent && (!phone?.trim() || !email?.trim())) {
-    return NextResponse.json({ error: 'Phone and email are required' }, { status: 400 });
+  if (!workingWithAgent && !phone?.trim()) {
+    return NextResponse.json({ error: 'Phone number is required' }, { status: 400 });
   }
 
   await ensureSchema();
@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
   if (hasHomeToSell) leadScore += 1;
   const leadTier = leadScore >= 4 ? 'Hot Lead' : leadScore >= 2 ? 'Warm Lead' : 'Cold Lead';
 
-  // open_house_signins has NOT NULL on phone and email — use placeholder for represented buyers
+  // open_house_signins has NOT NULL on phone and email — use placeholder when not provided
   const signinPhone = phone?.trim() || (workingWithAgent ? 'N/A' : null);
-  const signinEmail = email?.trim() || (workingWithAgent ? `agent_rep_${Date.now()}@placeholder.local` : null);
+  const signinEmail = email?.trim() || `noemail_${Date.now()}@placeholder.local`;
 
   const result = await db.execute({
     sql: `INSERT INTO open_house_signins
@@ -111,12 +111,14 @@ export async function POST(req: NextRequest) {
       ? ["--- Buyer's Agent ---", agentName && `Name: ${agentName}`, agentBrokerage && `Brokerage: ${agentBrokerage}`, agentPhone && `Phone: ${agentPhone}`, agentEmail && `Email: ${agentEmail}`].filter(Boolean).join('\n')
       : null;
 
+    const realEmail = email?.trim() && !email.includes('@placeholder.local') ? email.trim() : undefined;
+
     try {
       if (crm.crm_type === 'ghl' && crm.location_id) {
         const res = await fetch('https://services.leadconnectorhq.com/contacts/', {
           method: 'POST',
           headers: { Authorization: `Bearer ${crm.api_key}`, 'Content-Type': 'application/json', Version: '2021-07-28' },
-          body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone?.trim() || undefined, email: email?.trim() || undefined, locationId: crm.location_id, tags, source: 'Open House Sign-In', ...(agentNote && { notes: agentNote }) }),
+          body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim(), phone: phone?.trim() || undefined, ...(realEmail && { email: realEmail }), locationId: crm.location_id, tags, source: 'Open House Sign-In', ...(agentNote && { notes: agentNote }) }),
         });
         if (res.ok) {
           crmContactId = (await res.json())?.contact?.id ?? null;
@@ -131,7 +133,7 @@ export async function POST(req: NextRequest) {
           headers: { Authorization: `Basic ${Buffer.from(`${crm.api_key}:`).toString('base64')}`, 'Content-Type': 'application/json', 'X-System': 'RLM&CO Dashboard', 'X-System-Key': crm.api_key as string },
           body: JSON.stringify({
             source: 'Open House', type: 'Registration',
-            people: [{ firstName: firstName.trim(), lastName: lastName.trim(), emails: email ? [{ value: email.trim() }] : [], phones: phone ? [{ value: phone.trim() }] : [], tags }],
+            people: [{ firstName: firstName.trim(), lastName: lastName.trim(), emails: realEmail ? [{ value: realEmail }] : [], phones: phone ? [{ value: phone.trim() }] : [], tags }],
             ...(agentNote && { description: agentNote }),
           }),
         });
