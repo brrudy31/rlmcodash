@@ -6,6 +6,10 @@
       "schedule": "0 8 1 * *"
     },
     {
+      "path": "/api/cron/daily-reminder",
+      "schedule": "0 12 * * *"
+    },
+    {
       "path": "/api/cron/open-house-summary",
       "schedule": "*/15 * * * *"
     }

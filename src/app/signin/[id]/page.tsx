@@ -247,37 +247,67 @@ export default function SignInPage() {
             </div>
           </div>
 
-          <div className="border border-gray-200 rounded-lg p-4 space-y-3 mt-1">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Quick questions</p>
-            {CHECKBOXES.map(({ name, label }) => (
-              <div key={name}>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div
-                    onClick={() => handleCheck(name)}
-                    className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
-                      form[name] ? 'bg-black border-black' : 'border-gray-300 group-hover:border-black'
-                    }`}
-                  >
-                    {form[name] && (
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                  <span className="text-sm text-gray-700">{label}</span>
-                </label>
-                {name === 'workingWithAgent' && form.workingWithAgent && (
-                  <div className="mt-3 ml-8 space-y-2">
-                    <p className="text-xs text-gray-400 mb-2">Agent&apos;s info <span className="text-black font-semibold">(required)</span></p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <input name="agentName" placeholder="Agent Name *" value={form.agentName} onChange={handleText} className={agentInputClass} />
-                      <input name="agentBrokerage" placeholder="Brokerage" value={form.agentBrokerage} onChange={handleText} className={agentInputClass} />
-                    </div>
-                    <input name="agentPhone" placeholder="Agent Phone *" type="tel" value={form.agentPhone} onChange={handleText} className={agentInputClass} />
-                    <input name="agentEmail" placeholder="Agent Email *" type="email" value={form.agentEmail} onChange={handleText} className={agentInputClass} />
-                  </div>
+          {/* Working with agent — standalone prominent card */}
+          <button
+            type="button"
+            onClick={() => handleCheck('workingWithAgent')}
+            className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
+              form.workingWithAgent
+                ? 'border-black bg-black text-white'
+                : 'border-gray-300 bg-white text-gray-800 hover:border-gray-500'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className={`font-bold text-base ${form.workingWithAgent ? 'text-white' : 'text-black'}`}>
+                  I&apos;m already working with a real estate agent
+                </p>
+                <p className={`text-xs mt-0.5 ${form.workingWithAgent ? 'text-gray-300' : 'text-gray-400'}`}>
+                  Tap here if you have your own buyer&apos;s agent
+                </p>
+              </div>
+              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 transition-colors ${
+                form.workingWithAgent ? 'bg-white border-white' : 'border-gray-300'
+              }`}>
+                {form.workingWithAgent && (
+                  <svg className="w-3.5 h-3.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 )}
               </div>
+            </div>
+          </button>
+
+          {form.workingWithAgent && (
+            <div className="border border-gray-200 rounded-xl p-4 space-y-2 bg-gray-50">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Your Agent&apos;s Info <span className="text-black normal-case font-bold">(required)</span></p>
+              <div className="grid grid-cols-2 gap-2">
+                <input name="agentName" placeholder="Agent Name *" value={form.agentName} onChange={handleText} className={agentInputClass} />
+                <input name="agentBrokerage" placeholder="Brokerage" value={form.agentBrokerage} onChange={handleText} className={agentInputClass} />
+              </div>
+              <input name="agentPhone" placeholder="Agent Phone *" type="tel" value={form.agentPhone} onChange={handleText} className={agentInputClass} />
+              <input name="agentEmail" placeholder="Agent Email *" type="email" value={form.agentEmail} onChange={handleText} className={agentInputClass} />
+            </div>
+          )}
+
+          <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Quick questions</p>
+            {CHECKBOXES.filter((c) => c.name !== 'workingWithAgent').map(({ name, label }) => (
+              <label key={name} className="flex items-center gap-3 cursor-pointer group">
+                <div
+                  onClick={() => handleCheck(name)}
+                  className={`w-5 h-5 rounded border flex items-center justify-center flex-shrink-0 transition-colors ${
+                    form[name] ? 'bg-black border-black' : 'border-gray-300 group-hover:border-black'
+                  }`}
+                >
+                  {form[name] && (
+                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <span className="text-sm text-gray-700">{label}</span>
+              </label>
             ))}
           </div>
 
