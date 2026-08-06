@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw, Radio, Link2, PhoneCall } from 'lucide-react';
+import { Plus, Pencil, Trash2, ChevronUp, ChevronDown, QrCode, Users, Mail, RefreshCw, Radio, Link2, PhoneCall, Calendar, CalendarCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Modal from '@/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
@@ -10,7 +10,8 @@ interface OpenHouse {
   id: number; date: string; address: string; neighborhood: string | null;
   city: string; start_time: string | null; end_time: string | null;
   total_attendees: number; neighbors: number; represented_buyers: number;
-  unrepresented_buyers: number; notes: string | null; summary_sent_at: string | null; created_at: string;
+  unrepresented_buyers: number; notes: string | null; summary_sent_at: string | null;
+  google_event_id: string | null; created_at: string;
 }
 
 interface SignIn {
@@ -59,13 +60,29 @@ export default function OpenHousesPage() {
   const [canvassForm, setCanvassForm] = useState({ total_called: '', total_answered: '', total_engaged: '', notes: '' });
   const [canvassData, setCanvassData] = useState<CanvassData | null>(null);
   const [canvassSaving, setCanvassSaving] = useState(false);
+  const [gcalConnected, setGcalConnected] = useState<boolean | null>(null);
+  const [gcalConfigured, setGcalConfigured] = useState(false);
+  const [gcalBanner, setGcalBanner] = useState<'connected' | 'error' | null>(null);
 
   async function load() {
     const data = await fetch('/api/open-houses').then((r) => r.json());
     setHouses(data);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    fetch('/api/google-calendar/status')
+      .then((r) => r.json())
+      .then((d) => { setGcalConnected(d.connected); setGcalConfigured(d.configured); });
+    // Show banner if redirected back from Google OAuth
+    const params = new URLSearchParams(window.location.search);
+    const gcal = params.get('gcal');
+    if (gcal === 'connected' || gcal === 'error') {
+      setGcalBanner(gcal as 'connected' | 'error');
+      window.history.replaceState({}, '', window.location.pathname);
+      setTimeout(() => setGcalBanner(null), 5000);
+    }
+  }, []);
 
   function sortBy(key: SortKey) {
     setSort((prev) => ({ key, dir: prev.key === key && prev.dir === 'asc' ? 'desc' : 'asc' }));
@@ -227,6 +244,12 @@ export default function OpenHousesPage() {
     }
   }
 
+  async function disconnectGcal() {
+    if (!confirm('Disconnect Google Calendar? Future open houses won\'t be added automatically.')) return;
+    await fetch('/api/google-calendar/status', { method: 'DELETE' });
+    setGcalConnected(false);
+  }
+
   function SortIcon({ k }: { k: SortKey }) {
     if (sort.key !== k) return <ChevronUp className="w-3 h-3 opacity-20" />;
     return sort.dir === 'asc' ? <ChevronUp className="w-3 h-3 text-gold-400" /> : <ChevronDown className="w-3 h-3 text-gold-400" />;
@@ -260,14 +283,32 @@ export default function OpenHousesPage() {
 
   return (
     <div className="p-6 lg:p-8">
+      {gcalBanner && (
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm font-medium flex items-center gap-2 ${gcalBanner === 'connected' ? 'bg-green-900/40 border border-green-700 text-green-300' : 'bg-red-900/40 border border-red-700 text-red-300'}`}>
+          {gcalBanner === 'connected' ? <><CalendarCheck className="w-4 h-4" /> Google Calendar connected! New open houses will be added automatically.</> : <><Calendar className="w-4 h-4" /> Failed to connect Google Calendar. Please try again.</>}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-white">Open Houses</h2>
           <p className="text-navy-400 text-sm mt-1">{houses.length} recorded</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
-          <Plus className="w-4 h-4" /> Log Open House
-        </button>
+        <div className="flex items-center gap-2">
+          {gcalConfigured && (
+            gcalConnected ? (
+              <button onClick={disconnectGcal} title="Google Calendar connected — click to disconnect" className="flex items-center gap-1.5 bg-green-900/40 border border-green-700 text-green-300 hover:bg-green-900/60 px-3 py-2 rounded-lg text-xs font-medium transition-colors">
+                <CalendarCheck className="w-3.5 h-3.5" /> Google Calendar
+              </button>
+            ) : (
+              <a href="/api/google-calendar/auth" className="flex items-center gap-1.5 bg-navy-700 border border-navy-600 text-navy-300 hover:text-white hover:border-navy-500 px-3 py-2 rounded-lg text-xs font-medium transition-colors">
+                <Calendar className="w-3.5 h-3.5" /> Connect Google Calendar
+              </a>
+            )
+          )}
+          <button onClick={openAdd} className="flex items-center gap-2 bg-gold-500 hover:bg-gold-400 text-navy-900 font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors">
+            <Plus className="w-4 h-4" /> Log Open House
+          </button>
+        </div>
       </div>
 
       <div className="bg-navy-800 rounded-xl border border-navy-700 overflow-hidden">
@@ -286,12 +327,13 @@ export default function OpenHousesPage() {
                 <Th label="Neighbors" k="neighbors" />
                 <Th label="Rep. Buyers" k="represented_buyers" />
                 <Th label="Unrep. Buyers" k="unrepresented_buyers" />
+                <th className="px-4 py-3 text-center" title="Google Calendar"><CalendarCheck className="w-3.5 h-3.5 text-navy-500 inline" /></th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
               {sorted.length === 0 && (
-                <tr><td colSpan={11} className="text-center py-12 text-navy-500">No open houses logged yet.</td></tr>
+                <tr><td colSpan={13} className="text-center py-12 text-navy-500">No open houses logged yet.</td></tr>
               )}
               {sorted.map((h) => (
                 <tr key={h.id} className="border-b border-navy-750 hover:bg-navy-750/50 transition-colors">
@@ -308,6 +350,9 @@ export default function OpenHousesPage() {
                   <td className="px-4 py-3 text-navy-300 text-center">{h.neighbors}</td>
                   <td className="px-4 py-3 text-navy-300 text-center">{h.represented_buyers}</td>
                   <td className="px-4 py-3 text-gold-400 text-center font-medium">{h.unrepresented_buyers}</td>
+                  <td className="px-4 py-3 text-center">
+                    {h.google_event_id && <CalendarCheck className="w-3.5 h-3.5 text-green-500 inline" title="Added to Google Calendar" />}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
                       <button onClick={() => router.push(`/dashboard/open-houses/${h.id}/live`)} title="Live hot-lead dashboard" className="p-1.5 text-navy-400 hover:text-green-400 hover:bg-green-400/10 rounded transition-colors">

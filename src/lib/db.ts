@@ -176,6 +176,15 @@ const SCHEMA = `
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS google_calendar_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS open_house_signins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     open_house_id INTEGER NOT NULL REFERENCES open_houses(id) ON DELETE CASCADE,
@@ -254,6 +263,8 @@ export async function ensureSchema(): Promise<void> {
     'ALTER TABLE clients ADD COLUMN budget_range TEXT',
     // How they found the open house (Zillow/Sign/Flyer etc.) stored on client record
     'ALTER TABLE clients ADD COLUMN signin_source TEXT',
+    // Google Calendar integration
+    'ALTER TABLE open_houses ADD COLUMN google_event_id TEXT',
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }

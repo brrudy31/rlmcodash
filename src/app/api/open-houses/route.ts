@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, ensureSchema } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { getValidAccessToken, createOpenHouseCalendarEvent } from '@/lib/google-calendar';
+
+export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {
   const userId = await getUserIdFromRequest(request);
@@ -35,6 +38,25 @@ export async function POST(request: NextRequest) {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [date, address.trim(), neighborhood?.trim() || null, city.trim(), start_time || null, end_time || null, Number(total_attendees) || 0, Number(neighbors) || 0, Number(represented_buyers) || 0, Number(unrepresented_buyers) || 0, notes?.trim() || null, price || null, beds || null, baths || null, sqft || null, description?.trim() || null, list_date || null, userId],
   });
-  const { rows } = await db.execute({ sql: 'SELECT * FROM open_houses WHERE id = ?', args: [Number(result.lastInsertRowid)] });
+  const newId = Number(result.lastInsertRowid);
+
+  // Attempt to create a Google Calendar event if the user has connected
+  try {
+    const accessToken = await getValidAccessToken(userId);
+    if (accessToken) {
+      const eventId = await createOpenHouseCalendarEvent(accessToken, {
+        address: address.trim(),
+        city: city.trim(),
+        date,
+        start_time: start_time || null,
+        end_time: end_time || null,
+      });
+      if (eventId) {
+        await db.execute({ sql: 'UPDATE open_houses SET google_event_id = ? WHERE id = ?', args: [eventId, newId] });
+      }
+    }
+  } catch { /* non-fatal — open house was still saved */ }
+
+  const { rows } = await db.execute({ sql: 'SELECT * FROM open_houses WHERE id = ?', args: [newId] });
   return NextResponse.json(rows[0], { status: 201 });
 }
