@@ -26,7 +26,8 @@ export async function getValidAccessToken(userId: number): Promise<string | null
   });
   if (!rows[0]) return null;
 
-  const row = rows[0] as { access_token: string; refresh_token: string; expires_at: string };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const row = rows[0] as unknown as { access_token: string; refresh_token: string; expires_at: string };
   if (Date.now() < new Date(row.expires_at).getTime() - 60_000) return row.access_token;
 
   const fresh = await refreshToken(row.refresh_token);

@@ -351,7 +351,7 @@ export default function OpenHousesPage() {
                   <td className="px-4 py-3 text-navy-300 text-center">{h.represented_buyers}</td>
                   <td className="px-4 py-3 text-gold-400 text-center font-medium">{h.unrepresented_buyers}</td>
                   <td className="px-4 py-3 text-center">
-                    {h.google_event_id && <CalendarCheck className="w-3.5 h-3.5 text-green-500 inline" title="Added to Google Calendar" />}
+                    {h.google_event_id && <span title="Added to Google Calendar"><CalendarCheck className="w-3.5 h-3.5 text-green-500 inline" /></span>}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end">
