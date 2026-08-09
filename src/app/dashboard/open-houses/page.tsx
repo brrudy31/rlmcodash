@@ -19,7 +19,8 @@ interface SignIn {
   has_home_to_buy: number; has_home_to_sell: number; is_pre_approved: number;
   working_with_agent: number;
   agent_name: string | null; agent_phone: string | null; agent_email: string | null; agent_brokerage: string | null;
-  ghl_contact_id: string | null; created_at: string;
+  ghl_contact_id: string | null; lead_score: number; lead_source: string | null;
+  buy_timeline: string | null; budget_range: string | null; created_at: string;
 }
 
 const emptyForm = {
@@ -50,6 +51,7 @@ export default function OpenHousesPage() {
   const [qrHouse, setQrHouse] = useState<OpenHouse | null>(null);
   const [signinsHouse, setSigninsHouse] = useState<OpenHouse | null>(null);
   const [signins, setSignins] = useState<SignIn[]>([]);
+  const [signinsTab, setSigninsTab] = useState<'attendees' | 'analytics'>('attendees');
   const [sendingSummary, setSendingSummary] = useState<number | null>(null);
   const [syncingCrm, setSyncingCrm] = useState(false);
   const [syncResult, setSyncResult] = useState<{ synced: number; failed: number; errors: string[] } | null>(null);
@@ -184,6 +186,7 @@ export default function OpenHousesPage() {
     setSignins(data);
     setSigninsHouse(h);
     setSyncResult(null);
+    setSigninsTab('attendees');
   }
 
   async function syncCrm(h: OpenHouse) {
@@ -605,70 +608,200 @@ export default function OpenHousesPage() {
         </Modal>
       )}
 
-      {signinsHouse && (
-        <Modal title={`Sign-Ins — ${signinsHouse.address}`} onClose={() => { setSigninsHouse(null); setSyncResult(null); }} size="lg">
-          {signins.length === 0 ? (
-            <p className="text-navy-400 text-sm text-center py-8">No sign-ins yet for this open house.</p>
-          ) : (
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-              {signins.map((s) => (
-                <div key={s.id} className="bg-navy-750 border border-navy-600 rounded-lg px-4 py-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-white text-sm">{s.first_name} {s.last_name}</p>
-                      <p className="text-navy-400 text-xs mt-0.5">{s.phone} · {s.email}</p>
-                    </div>
-                    <div className="flex gap-1 flex-wrap justify-end">
-                      {Boolean(s.has_home_to_buy) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Buying</span>}
-                      {Boolean(s.has_home_to_sell) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Selling</span>}
-                      {Boolean(s.is_pre_approved) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Pre-Approved</span>}
-                      {Boolean(s.working_with_agent) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Has Agent</span>}
-                      {s.ghl_contact_id
-                        ? <span className="text-xs bg-gold-500/20 text-gold-400 px-2 py-0.5 rounded-full">✓ In CRM</span>
-                        : <span className="text-xs bg-navy-700 text-navy-500 px-2 py-0.5 rounded-full">Not synced</span>
-                      }
-                    </div>
-                  </div>
-                  {Boolean(s.working_with_agent) && (s.agent_name || s.agent_brokerage || s.agent_phone || s.agent_email) && (
-                    <div className="mt-2 pl-3 border-l-2 border-navy-500 space-y-0.5">
-                      {s.agent_name && <p className="text-navy-300 text-xs font-medium">{s.agent_name}{s.agent_brokerage ? ` · ${s.agent_brokerage}` : ''}</p>}
-                      {s.agent_phone && <p className="text-navy-400 text-xs">{s.agent_phone}</p>}
-                      {s.agent_email && <p className="text-navy-400 text-xs">{s.agent_email}</p>}
-                    </div>
-                  )}
-                  <p className="text-navy-500 text-xs mt-1.5">{new Date(s.created_at).toLocaleString()}</p>
-                </div>
+      {signinsHouse && (() => {
+        const unrepresented = signins.filter(s => !s.working_with_agent);
+        const sourceCounts: Record<string, number> = {};
+        const timelineCounts: Record<string, number> = {};
+        const budgetCounts: Record<string, number> = {};
+        for (const s of unrepresented) {
+          const src = s.lead_source || 'Not specified';
+          sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+          const tl = s.buy_timeline || 'Not specified';
+          timelineCounts[tl] = (timelineCounts[tl] || 0) + 1;
+          const bg = s.budget_range || 'Not specified';
+          budgetCounts[bg] = (budgetCounts[bg] || 0) + 1;
+        }
+        const maxSrc = Math.max(1, ...Object.values(sourceCounts));
+        const maxTl = Math.max(1, ...Object.values(timelineCounts));
+        const maxBg = Math.max(1, ...Object.values(budgetCounts));
+        const hotLeads = signins.filter(s => s.lead_score >= 4).length;
+        const preApproved = signins.filter(s => s.is_pre_approved).length;
+        const totalUnrep = unrepresented.length;
+
+        function MiniBar({ label, count, max, color }: { label: string; count: number; max: number; color: string }) {
+          return (
+            <div className="flex items-center gap-2">
+              <span className="text-navy-400 text-xs w-32 shrink-0 truncate" title={label}>{label}</span>
+              <div className="flex-1 bg-navy-700 rounded-full h-2 overflow-hidden">
+                <div className={`h-2 rounded-full ${color}`} style={{ width: `${(count / max) * 100}%` }} />
+              </div>
+              <span className="text-white text-xs font-semibold w-4 text-right">{count}</span>
+            </div>
+          );
+        }
+
+        return (
+          <Modal title={`Sign-Ins — ${signinsHouse.address}`} onClose={() => { setSigninsHouse(null); setSyncResult(null); }} size="lg">
+            {/* Tabs */}
+            <div className="flex gap-1 mb-4 bg-navy-750 rounded-lg p-1">
+              {(['attendees', 'analytics'] as const).map((tab) => (
+                <button key={tab} onClick={() => setSigninsTab(tab)}
+                  className={`flex-1 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${signinsTab === tab ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-navy-300'}`}>
+                  {tab === 'analytics' ? 'Analytics' : `Attendees (${signins.length})`}
+                </button>
               ))}
             </div>
-          )}
 
-          {syncResult && (
-            <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${syncResult.failed > 0 ? 'bg-red-900/30 border border-red-700 text-red-300' : 'bg-green-900/30 border border-green-700 text-green-300'}`}>
-              {syncResult.errors.length > 0 && syncResult.synced === 0
-                ? syncResult.errors[0]
-                : `✓ Synced ${syncResult.synced} contact${syncResult.synced !== 1 ? 's' : ''} to CRM${syncResult.failed > 0 ? ` · ${syncResult.failed} failed` : ''}`
-              }
-              {syncResult.errors.length > 0 && syncResult.synced > 0 && (
-                <ul className="mt-1 text-xs opacity-80 space-y-0.5">{syncResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+            {signinsTab === 'attendees' && (
+              signins.length === 0 ? (
+                <p className="text-navy-400 text-sm text-center py-8">No sign-ins yet for this open house.</p>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {signins.map((s) => {
+                    const scoreColor = s.lead_score >= 4 ? 'text-red-400' : s.lead_score >= 2 ? 'text-yellow-400' : 'text-navy-500';
+                    const isPlaceholderEmail = s.email?.includes('@placeholder.local');
+                    const isPlaceholderPhone = s.phone === 'N/A';
+                    return (
+                      <div key={s.id} className="bg-navy-750 border border-navy-600 rounded-lg px-4 py-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-white text-sm">{s.first_name} {s.last_name}</p>
+                              <span className={`text-xs font-bold ${scoreColor}`}>★{s.lead_score ?? 0}</span>
+                            </div>
+                            {!isPlaceholderPhone && <p className="text-navy-400 text-xs mt-0.5">{s.phone}</p>}
+                            {!isPlaceholderEmail && <p className="text-navy-400 text-xs">{s.email}</p>}
+                          </div>
+                          <div className="flex gap-1 flex-wrap justify-end">
+                            {Boolean(s.has_home_to_buy) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Buying</span>}
+                            {Boolean(s.has_home_to_sell) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Selling</span>}
+                            {Boolean(s.is_pre_approved) && <span className="text-xs bg-green-900/50 text-green-400 px-2 py-0.5 rounded-full">Pre-Approved</span>}
+                            {Boolean(s.working_with_agent) && <span className="text-xs bg-navy-700 text-navy-300 px-2 py-0.5 rounded-full">Has Agent</span>}
+                            {s.ghl_contact_id
+                              ? <span className="text-xs bg-gold-500/20 text-gold-400 px-2 py-0.5 rounded-full">✓ In CRM</span>
+                              : <span className="text-xs bg-navy-700 text-navy-500 px-2 py-0.5 rounded-full">Not synced</span>
+                            }
+                          </div>
+                        </div>
+                        {/* Intent answers */}
+                        {!s.working_with_agent && (s.lead_source || s.buy_timeline || s.budget_range) && (
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-0.5">
+                            {s.lead_source && <p className="text-navy-400 text-xs"><span className="text-navy-500">Heard via:</span> <span className="text-navy-300">{s.lead_source}</span></p>}
+                            {s.buy_timeline && <p className="text-navy-400 text-xs"><span className="text-navy-500">Timeline:</span> <span className="text-navy-300">{s.buy_timeline}</span></p>}
+                            {s.budget_range && <p className="text-navy-400 text-xs"><span className="text-navy-500">Budget:</span> <span className="text-navy-300">{s.budget_range}</span></p>}
+                          </div>
+                        )}
+                        {Boolean(s.working_with_agent) && (s.agent_name || s.agent_brokerage || s.agent_phone || s.agent_email) && (
+                          <div className="mt-2 pl-3 border-l-2 border-navy-500 space-y-0.5">
+                            {s.agent_name && <p className="text-navy-300 text-xs font-medium">{s.agent_name}{s.agent_brokerage ? ` · ${s.agent_brokerage}` : ''}</p>}
+                            {s.agent_phone && <p className="text-navy-400 text-xs">{s.agent_phone}</p>}
+                            {s.agent_email && <p className="text-navy-400 text-xs">{s.agent_email}</p>}
+                          </div>
+                        )}
+                        <p className="text-navy-500 text-xs mt-1.5">{new Date(s.created_at).toLocaleString()}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
+            {signinsTab === 'analytics' && (
+              <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+                {signins.length === 0 ? (
+                  <p className="text-navy-400 text-sm text-center py-8">No sign-ins yet — analytics will appear once people sign in.</p>
+                ) : (
+                  <>
+                    {/* KPI row */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Total Attendees', value: signins.length, sub: null },
+                        { label: 'Unrepresented', value: totalUnrep, sub: signins.length ? `${Math.round((totalUnrep / signins.length) * 100)}% of total` : null },
+                        { label: 'Hot Leads', value: hotLeads, sub: `score ≥ 4` },
+                        { label: 'Pre-Approved', value: preApproved, sub: null },
+                        { label: 'Has Home to Buy', value: signins.filter(s => s.has_home_to_buy).length, sub: null },
+                        { label: 'Has Home to Sell', value: signins.filter(s => s.has_home_to_sell).length, sub: null },
+                      ].map(({ label, value, sub }) => (
+                        <div key={label} className="bg-navy-750 border border-navy-700 rounded-lg px-3 py-2.5 text-center">
+                          <p className="text-xl font-bold text-white">{value}</p>
+                          <p className="text-navy-400 text-xs leading-tight mt-0.5">{label}</p>
+                          {sub && <p className="text-navy-600 text-xs mt-0.5">{sub}</p>}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Where they heard about it */}
+                    {Object.keys(sourceCounts).length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Where They Heard About It</p>
+                        <div className="space-y-2">
+                          {Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).map(([label, count]) => (
+                            <MiniBar key={label} label={label} count={count} max={maxSrc} color="bg-gold-500" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Buy timeline */}
+                    {Object.keys(timelineCounts).length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Buying Timeline</p>
+                        <div className="space-y-2">
+                          {Object.entries(timelineCounts).sort((a, b) => b[1] - a[1]).map(([label, count]) => (
+                            <MiniBar key={label} label={label} count={count} max={maxTl} color="bg-blue-500" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Budget range */}
+                    {Object.keys(budgetCounts).length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-navy-400 uppercase tracking-wide mb-2">Budget Range</p>
+                        <div className="space-y-2">
+                          {Object.entries(budgetCounts).sort((a, b) => b[1] - a[1]).map(([label, count]) => (
+                            <MiniBar key={label} label={label} count={count} max={maxBg} color="bg-green-500" />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {totalUnrep === 0 && (
+                      <p className="text-navy-500 text-xs text-center">No unrepresented buyers — source/timeline/budget data comes from visitors without an agent.</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {syncResult && (
+              <div className={`mt-4 rounded-lg px-4 py-3 text-sm ${syncResult.failed > 0 ? 'bg-red-900/30 border border-red-700 text-red-300' : 'bg-green-900/30 border border-green-700 text-green-300'}`}>
+                {syncResult.errors.length > 0 && syncResult.synced === 0
+                  ? syncResult.errors[0]
+                  : `✓ Synced ${syncResult.synced} contact${syncResult.synced !== 1 ? 's' : ''} to CRM${syncResult.failed > 0 ? ` · ${syncResult.failed} failed` : ''}`
+                }
+                {syncResult.errors.length > 0 && syncResult.synced > 0 && (
+                  <ul className="mt-1 text-xs opacity-80 space-y-0.5">{syncResult.errors.map((e, i) => <li key={i}>{e}</li>)}</ul>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between mt-4">
+              <p className="text-navy-500 text-xs">{signins.length} sign-in{signins.length !== 1 ? 's' : ''} · {signins.filter(s => s.ghl_contact_id).length} synced to CRM</p>
+              {signins.some(s => !s.ghl_contact_id) && (
+                <button
+                  onClick={() => syncCrm(signinsHouse)}
+                  disabled={syncingCrm}
+                  className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold px-3 py-1.5 rounded-lg text-xs transition-colors"
+                >
+                  <RefreshCw className={`w-3 h-3 ${syncingCrm ? 'animate-spin' : ''}`} />
+                  {syncingCrm ? 'Syncing...' : `Sync ${signins.filter(s => !s.ghl_contact_id).length} to CRM`}
+                </button>
               )}
             </div>
-          )}
-
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-navy-500 text-xs">{signins.length} sign-in{signins.length !== 1 ? 's' : ''} · {signins.filter(s => s.ghl_contact_id).length} synced to CRM</p>
-            {signins.some(s => !s.ghl_contact_id) && (
-              <button
-                onClick={() => syncCrm(signinsHouse)}
-                disabled={syncingCrm}
-                className="flex items-center gap-1.5 bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold px-3 py-1.5 rounded-lg text-xs transition-colors"
-              >
-                <RefreshCw className={`w-3 h-3 ${syncingCrm ? 'animate-spin' : ''}`} />
-                {syncingCrm ? 'Syncing...' : `Sync ${signins.filter(s => !s.ghl_contact_id).length} to CRM`}
-              </button>
-            )}
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        );
+      })()}
     </div>
   );
 }
