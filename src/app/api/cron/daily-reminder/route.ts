@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { getDb, ensureSchema } from '@/lib/db';
+import { sendEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -12,8 +12,6 @@ export async function GET(request: NextRequest) {
 
   await ensureSchema();
   const db = getDb();
-  const resend = new Resend(process.env.RESEND_API_KEY);
-
   const today = new Date().toISOString().split('T')[0];
   const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const displayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -182,8 +180,7 @@ export async function GET(request: NextRequest) {
 </html>`;
 
     try {
-      await resend.emails.send({
-        from: 'RLM&CO Dashboard <onboarding@resend.dev>',
+      await sendEmail({
         to: user.email as string,
         subject: `${pendingItems.length > 0 ? `📋 ${pendingItems.length} tasks` : '✅ All done'}${followUps.length > 0 ? ` · 📞 ${followUps.length} follow-ups` : ''} — ${displayDate}`,
         html,

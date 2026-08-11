@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { getDb, ensureSchema } from '@/lib/db';
 import { getUserIdFromRequest } from '@/lib/auth';
+import { sendEmail } from '@/lib/email';
 
 export const runtime = 'nodejs';
 
@@ -9,13 +9,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const userId = await getUserIdFromRequest(req);
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const { id } = await params;
-  const resendKey = process.env.RESEND_API_KEY;
-  const fromEmail = process.env.RESEND_FROM_EMAIL;
-  const toEmail = process.env.SUMMARY_EMAIL_TO || process.env.RESEND_FROM_EMAIL;
 
-  if (!resendKey || !fromEmail || !toEmail) {
+  // Need at least one email provider configured
+  const hasGmail = !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+  const hasResend = !!(process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL);
+  if (!hasGmail && !hasResend) {
     return NextResponse.json({ error: 'Email not configured' }, { status: 500 });
   }
+
+  const toEmail = process.env.GMAIL_USER || process.env.SUMMARY_EMAIL_TO || process.env.RESEND_FROM_EMAIL!;
 
   await ensureSchema();
   const db = getDb();
@@ -36,17 +38,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     args: [id],
   });
 
-  const resend = new Resend(resendKey);
-
-  const { error } = await resend.emails.send({
-    from: fromEmail,
-    to: toEmail,
-    subject: `Open House Summary — ${house.address}${house.end_time ? ` (${formatTime(String(house.end_time))})` : ''}`,
-    html: buildSummaryEmail(house, signins),
-  });
-
-  if (error) {
-    return NextResponse.json({ error: `Resend error: ${error.message}` }, { status: 500 });
+  try {
+    await sendEmail({
+      to: toEmail,
+      subject: `Open House Summary — ${house.address}${house.end_time ? ` (${formatTime(String(house.end_time))})` : ''}`,
+      html: buildSummaryEmail(house, signins),
+    });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 
   await db.execute({
