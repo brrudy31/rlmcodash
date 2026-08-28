@@ -97,89 +97,52 @@ export default function EventsPage() {
   function spin() {
     const eligible = entries.filter((e) => !e.excluded);
     if (eligible.length === 0) return;
-    setSpinning(true);
     setWinner(null);
+    setSpinning(true);
 
     const winnerEntry = eligible[Math.floor(Math.random() * eligible.length)];
     const winnerIdx = eligible.indexOf(winnerEntry);
     const sliceAngle = 360 / eligible.length;
     const winnerCenter = winnerIdx * sliceAngle + sliceAngle / 2;
-    // Target: bring winner center to top (0°), pointer at top
     const targetDeg = -winnerCenter + 360 * 6 + spinRef.current;
-    setRotation(targetDeg);
+
+    // Double rAF: let React flush spinning=true (which enables the transition)
+    // before we update rotation, so the browser sees the transition active first.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setRotation(targetDeg);
+      });
+    });
 
     setTimeout(() => {
       setSpinning(false);
       setWinner(winnerEntry);
-    }, 4500);
+    }, 4700);
   }
 
-  // ── Wheel SVG ──────────────────────────────────────────────────────────────
-  function WheelSVG() {
-    const eligible = entries.filter((e) => !e.excluded);
-    const n = eligible.length;
-    if (n === 0) return (
-      <div className="w-64 h-64 rounded-full bg-navy-700 border-4 border-navy-600 flex items-center justify-center">
-        <p className="text-navy-400 text-sm text-center px-6">No eligible entries yet</p>
-      </div>
-    );
-    if (n === 1) {
-      return (
-        <div className="w-64 h-64 rounded-full flex items-center justify-center border-4 border-gold-500" style={{ background: WHEEL_COLORS[0] }}>
-          <p className="text-white text-sm font-bold text-center px-4">{eligible[0].name.split(' ')[0]}</p>
-        </div>
-      );
-    }
-    const sliceAngle = (2 * Math.PI) / n;
-    const paths = eligible.map((entry, i) => {
-      const start = i * sliceAngle - Math.PI / 2;
-      const end = start + sliceAngle;
-      const x1 = Math.cos(start), y1 = Math.sin(start);
-      const x2 = Math.cos(end), y2 = Math.sin(end);
-      const largeArc = sliceAngle > Math.PI ? 1 : 0;
-      const d = `M 0 0 L ${x1} ${y1} A 1 1 0 ${largeArc} 1 ${x2} ${y2} Z`;
-      const midAngle = start + sliceAngle / 2;
-      const labelR = 0.65;
-      const lx = Math.cos(midAngle) * labelR;
-      const ly = Math.sin(midAngle) * labelR;
-      const firstName = entry.name.split(' ')[0].slice(0, 9);
-      return { d, fill: WHEEL_COLORS[i % WHEEL_COLORS.length], lx, ly, midAngle, label: firstName };
-    });
-
-    return (
-      <div className="relative w-64 h-64">
-        {/* Pointer */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10 w-0 h-0"
-          style={{ borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderTop: '20px solid #c5a84b' }} />
-        <svg
-          viewBox="-1 -1 2 2"
-          className="w-64 h-64 rounded-full border-4 border-navy-600 drop-shadow-lg"
-          style={{
-            transform: `rotate(${rotation}deg)`,
-            transition: spinning ? 'transform 4.2s cubic-bezier(0.17,0.67,0.08,1)' : 'none',
-          }}
-        >
-          {paths.map((p, i) => (
-            <g key={i}>
-              <path d={p.d} fill={p.fill} stroke="#1e2d42" strokeWidth="0.01" />
-              <text
-                x={p.lx} y={p.ly}
-                fill="white"
-                fontSize={n > 12 ? '0.10' : '0.13'}
-                fontWeight="600"
-                textAnchor="middle"
-                dominantBaseline="middle"
-                transform={`rotate(${(p.midAngle * 180 / Math.PI) + 90}, ${p.lx}, ${p.ly})`}
-                style={{ pointerEvents: 'none', userSelect: 'none' }}
-              >
-                {p.label}
-              </text>
-            </g>
-          ))}
-        </svg>
-      </div>
-    );
-  }
+  // ── Wheel — compute slices inline so the same SVG element is never remounted ─
+  const eligibleEntries = entries.filter((e) => !e.excluded);
+  const wheelSlices = eligibleEntries.length >= 2
+    ? eligibleEntries.map((entry, i) => {
+        const n = eligibleEntries.length;
+        const sliceAngle = (2 * Math.PI) / n;
+        const start = i * sliceAngle - Math.PI / 2;
+        const end = start + sliceAngle;
+        const x1 = Math.cos(start), y1 = Math.sin(start);
+        const x2 = Math.cos(end), y2 = Math.sin(end);
+        const largeArc = sliceAngle > Math.PI ? 1 : 0;
+        const d = `M 0 0 L ${x1} ${y1} A 1 1 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        const midAngle = start + sliceAngle / 2;
+        const lx = Math.cos(midAngle) * 0.65;
+        const ly = Math.sin(midAngle) * 0.65;
+        return {
+          d, lx, ly, midAngle,
+          fill: WHEEL_COLORS[i % WHEEL_COLORS.length],
+          label: entry.name.split(' ')[0].slice(0, 9),
+          n,
+        };
+      })
+    : [];
 
   return (
     <div className="p-6 lg:p-8">
@@ -287,7 +250,47 @@ export default function EventsPage() {
       {wheelEvent && (
         <Modal title={`Pick a Winner — ${wheelEvent.name}`} onClose={() => setWheelEvent(null)} size="lg">
           <div className="flex flex-col items-center gap-6">
-            <WheelSVG />
+            {/* Wheel — inlined so the SVG element is never remounted and CSS transition fires correctly */}
+          {eligibleEntries.length === 0 ? (
+            <div className="w-64 h-64 rounded-full bg-navy-700 border-4 border-navy-600 flex items-center justify-center">
+              <p className="text-navy-400 text-sm text-center px-6">No eligible entries yet</p>
+            </div>
+          ) : eligibleEntries.length === 1 ? (
+            <div className="w-64 h-64 rounded-full flex items-center justify-center border-4 border-gold-500" style={{ background: WHEEL_COLORS[0] }}>
+              <p className="text-white text-sm font-bold text-center px-4">{eligibleEntries[0].name.split(' ')[0]}</p>
+            </div>
+          ) : (
+            <div className="relative w-64 h-64">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-10 w-0 h-0"
+                style={{ borderLeft: '10px solid transparent', borderRight: '10px solid transparent', borderTop: '20px solid #c5a84b' }} />
+              <svg
+                viewBox="-1 -1 2 2"
+                className="w-64 h-64 rounded-full border-4 border-navy-600 drop-shadow-lg"
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transition: spinning ? 'transform 4.5s cubic-bezier(0.17,0.67,0.08,1)' : 'none',
+                }}
+              >
+                {wheelSlices.map((p, i) => (
+                  <g key={i}>
+                    <path d={p.d} fill={p.fill} stroke="#1e2d42" strokeWidth="0.01" />
+                    <text
+                      x={p.lx} y={p.ly}
+                      fill="white"
+                      fontSize={p.n > 12 ? '0.09' : '0.12'}
+                      fontWeight="600"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      transform={`rotate(${(p.midAngle * 180 / Math.PI) + 90},${p.lx},${p.ly})`}
+                      style={{ pointerEvents: 'none', userSelect: 'none' }}
+                    >
+                      {p.label}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
+          )}
 
             {winner && (
               <div className="text-center bg-gold-500/10 border border-gold-500/40 rounded-xl px-6 py-4 w-full">
