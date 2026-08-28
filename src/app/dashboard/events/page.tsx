@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Plus, Trash2, QrCode, Users, ChevronDown, ChevronUp, RotateCcw, Gift } from 'lucide-react';
+import { Plus, Trash2, QrCode, Users, ChevronDown, ChevronUp, RotateCcw, Gift, Phone, Mail } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -42,6 +42,8 @@ export default function EventsPage() {
   const [winner, setWinner] = useState<Entry | null>(null);
   const [rotation, setRotation] = useState(0);
   const [showEntries, setShowEntries] = useState(false);
+  const [entriesModal, setEntriesModal] = useState<RaffleEvent | null>(null);
+  const [entriesModalData, setEntriesModalData] = useState<Entry[]>([]);
   const spinRef = useRef(rotation);
   spinRef.current = rotation;
 
@@ -51,6 +53,12 @@ export default function EventsPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function openEntriesModal(ev: RaffleEvent) {
+    const data = await fetch(`/api/raffle-events/${ev.id}/entries`).then((r) => r.json());
+    setEntriesModalData(Array.isArray(data) ? data : []);
+    setEntriesModal(ev);
+  }
 
   async function openWheel(ev: RaffleEvent) {
     const data = await fetch(`/api/raffle-events/${ev.id}/entries`).then((r) => r.json());
@@ -174,6 +182,9 @@ export default function EventsPage() {
                 <button onClick={() => setQrEvent(ev)} title="QR code / share link" className="p-2 text-navy-400 hover:text-gold-400 hover:bg-navy-700 rounded-lg transition-colors">
                   <QrCode className="w-4 h-4" />
                 </button>
+                <button onClick={() => openEntriesModal(ev)} title="View entries" className="flex items-center gap-1.5 bg-navy-700 hover:bg-navy-600 border border-navy-600 text-navy-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
+                  <Users className="w-3.5 h-3.5" /> Entries
+                </button>
                 <button onClick={() => openWheel(ev)} title="Spin the wheel" className="flex items-center gap-1.5 bg-gold-500/15 hover:bg-gold-500/25 border border-gold-500/30 text-gold-400 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
                   <Gift className="w-3.5 h-3.5" /> Pick Winner
                 </button>
@@ -245,6 +256,47 @@ export default function EventsPage() {
           </Modal>
         );
       })()}
+
+      {/* Entries Modal */}
+      {entriesModal && (
+        <Modal title={`Entries — ${entriesModal.name}`} onClose={() => setEntriesModal(null)} size="lg">
+          {entriesModalData.length === 0 ? (
+            <p className="text-navy-400 text-sm text-center py-8">No entries yet for this event.</p>
+          ) : (
+            <>
+              <p className="text-navy-500 text-xs mb-3">{entriesModalData.length} entr{entriesModalData.length !== 1 ? 'ies' : 'y'}</p>
+              <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                {entriesModalData.map((entry, i) => (
+                  <div key={entry.id} className="bg-navy-750 border border-navy-600 rounded-lg px-4 py-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-navy-600 text-xs font-mono w-5 shrink-0">{i + 1}.</span>
+                        <p className="font-semibold text-white text-sm">{entry.name}</p>
+                      </div>
+                      {entry.heard_from && (
+                        <span className="text-xs bg-navy-700 text-navy-400 px-2 py-0.5 rounded-full shrink-0">{entry.heard_from}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1.5 ml-7">
+                      {entry.phone && (
+                        <p className="text-navy-300 text-xs flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-navy-500" />{entry.phone}
+                        </p>
+                      )}
+                      {entry.email && (
+                        <p className="text-navy-300 text-xs flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-navy-500" />{entry.email}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-navy-600 text-xs mt-1.5 ml-7">{new Date(entry.created_at).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
 
       {/* Wheel Picker Modal */}
       {wheelEvent && (
