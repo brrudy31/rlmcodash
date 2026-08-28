@@ -15,6 +15,7 @@ import {
   X,
   DoorOpen,
   Settings,
+  Gift,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
@@ -26,6 +27,7 @@ const nav = [
   { label: 'Send Emails', href: '/dashboard/email', icon: Send },
   { label: 'Email Tracking', href: '/dashboard/tracking', icon: BarChart2 },
   { label: 'Open Houses', href: '/dashboard/open-houses', icon: Home },
+  { label: 'Events', href: '/dashboard/events', icon: Gift },
   { label: 'Door Knocking', href: '/dashboard/door-knocking', icon: DoorOpen },
   { label: 'Market Stats', href: '/dashboard/market', icon: TrendingUp },
   { label: 'Analytics', href: '/dashboard/analytics', icon: BarChart2 },
