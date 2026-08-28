@@ -56,7 +56,7 @@ export default function RaffleSignInPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) { setError('Please enter your name.'); return; }
-    if (!form.email.trim()) { setError('Please enter your email.'); return; }
+    if (!form.phone.trim()) { setError('Please enter your phone number.'); return; }
     if (!form.heardFrom) { setError('Please select how you heard about this event.'); return; }
     setLoading(true);
     setError('');
@@ -103,19 +103,22 @@ export default function RaffleSignInPage() {
     <div className="min-h-screen bg-white text-black">
       <div className="max-w-md mx-auto p-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6 mt-2">
-          <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center flex-shrink-0">
-            <Gift className="w-5 h-5 text-white" />
+        <div className="text-center mb-8 mt-4">
+          <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center mx-auto mb-4">
+            <Gift className="w-7 h-7 text-white" />
           </div>
-          <div>
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Event Raffle</p>
-            <h1 className="text-lg font-bold leading-tight">{event?.name || '…'}</h1>
-          </div>
+          {event?.description ? (
+            <>
+              <h1 className="text-2xl font-bold leading-tight mb-2">{event.description}</h1>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-widest">{event?.name || '…'}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-widest mb-1">Event Raffle</p>
+              <h1 className="text-2xl font-bold leading-tight">{event?.name || '…'}</h1>
+            </>
+          )}
         </div>
-
-        {event?.description && (
-          <p className="text-gray-600 text-sm mb-6 leading-relaxed">{event.description}</p>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -131,19 +134,7 @@ export default function RaffleSignInPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Email <span className="text-red-500">*</span></label>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={form.email}
-              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-              className={inputClass}
-              autoComplete="email"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Phone <span className="text-gray-400 font-normal normal-case">(optional)</span></label>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Phone <span className="text-red-500">*</span></label>
             <input
               type="tel"
               placeholder="(215) 555-0100"
@@ -151,6 +142,18 @@ export default function RaffleSignInPage() {
               onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
               className={inputClass}
               autoComplete="tel"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Email <span className="text-gray-400 font-normal normal-case">(optional)</span></label>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              value={form.email}
+              onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
+              className={inputClass}
+              autoComplete="email"
             />
           </div>
 
