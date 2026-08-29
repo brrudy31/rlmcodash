@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic = PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + '?')
+    (p) => pathname === p || pathname.startsWith(p + '/') || pathname.startsWith(p + '?')
   );
   if (isPublic) return NextResponse.next();
 
