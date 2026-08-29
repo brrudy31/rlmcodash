@@ -13,6 +13,10 @@ const PUBLIC_PATHS = [
   '/api/debug-env',
   '/signup',
   '/api/auth/signup',
+  '/raffle',
+  '/api/raffle-entry',
+  '/api/raffle-events',
+  '/api/open-house-info',
 ];
 
 export async function middleware(request: NextRequest) {
@@ -36,5 +40,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/api/:path*'],
+  matcher: ['/dashboard/:path*', '/api/:path*', '/raffle/:path*'],
 };
