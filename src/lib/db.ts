@@ -219,6 +219,29 @@ const SCHEMA = `
     generated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS vault_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    original_name TEXT NOT NULL,
+    blob_url TEXT NOT NULL,
+    blob_pathname TEXT NOT NULL,
+    mime_type TEXT NOT NULL DEFAULT 'application/octet-stream',
+    file_size INTEGER NOT NULL DEFAULT 0,
+    folder TEXT NOT NULL DEFAULT 'Contracts',
+    extracted_text TEXT,
+    property_address TEXT,
+    client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS vault_tags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    document_id INTEGER NOT NULL REFERENCES vault_documents(id) ON DELETE CASCADE,
+    tag TEXT NOT NULL,
+    UNIQUE(document_id, tag)
+  );
+
   CREATE TABLE IF NOT EXISTS open_house_signins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     open_house_id INTEGER NOT NULL REFERENCES open_houses(id) ON DELETE CASCADE,
