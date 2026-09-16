@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   '/api/raffle-entry',
   '/api/raffle-events',
   '/api/open-house-info',
+  '/api/google-calendar/callback',
 ];
 
 export async function middleware(request: NextRequest) {
