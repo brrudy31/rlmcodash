@@ -58,6 +58,8 @@ interface Briefing {
 
 function formatTime(iso: string | null | undefined): string {
   if (!iso) return '';
+  // All-day events are plain dates like "2024-09-16"
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return 'All day';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return iso;
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });

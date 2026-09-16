@@ -18,16 +18,17 @@ async function generateBriefing(userId: number) {
   });
   const coldDays = (settingsRows[0] as unknown as { cold_lead_days: number } | undefined)?.cold_lead_days ?? 7;
 
+  const googleToken = await getValidAccessToken(userId);
+
   const results = await Promise.allSettled([
     // 1. Calendar events today
     (async () => {
-      const token = await getValidAccessToken(userId);
-      if (!token) return { connected: false, events: [] };
+      if (!googleToken) return { connected: false, events: [] };
       const timeMin = `${today}T00:00:00Z`;
       const timeMax = `${today}T23:59:59Z`;
       const res = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${googleToken}` } }
       );
       if (!res.ok) return { connected: true, events: [] };
       const data = await res.json();
@@ -43,8 +44,7 @@ async function generateBriefing(userId: number) {
 
     // 2. Unread emails
     (async () => {
-      const token = await getValidAccessToken(userId);
-      if (!token) return { connected: false, emails: [] };
+      if (!googleToken) return { connected: false, emails: [] };
       const emails = await getUnreadEmails(userId);
       return { connected: true, emails };
     })(),
@@ -56,7 +56,7 @@ async function generateBriefing(userId: number) {
               FROM clients
               WHERE user_id = ?
               AND (last_contacted_at IS NULL OR last_contacted_at < datetime('now', ?))
-              ORDER BY last_contacted_at ASC NULLS FIRST
+              ORDER BY CASE WHEN last_contacted_at IS NULL THEN 0 ELSE 1 END, last_contacted_at ASC
               LIMIT 20`,
         args: [userId, `-${coldDays} days`],
       });
