@@ -45,10 +45,19 @@ export async function POST(request: NextRequest) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const pathname = `vault/${userId}/${Date.now()}-${safeName}`;
 
-  const blob = await put(pathname, buffer, {
-    access: 'public',
-    contentType: file.type || 'application/octet-stream',
-  });
+  let blob: Awaited<ReturnType<typeof put>>;
+  try {
+    blob = await put(pathname, buffer, {
+      access: 'public',
+      contentType: file.type || 'application/octet-stream',
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('token') || msg.includes('unauthorized') || msg.includes('No token')) {
+      return NextResponse.json({ error: 'BLOB_READ_WRITE_TOKEN is not configured in Vercel env vars.' }, { status: 500 });
+    }
+    return NextResponse.json({ error: `Storage error: ${msg}` }, { status: 500 });
+  }
 
   const extractedText = await extractText(buffer, file.type || '');
 
