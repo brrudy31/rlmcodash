@@ -16,11 +16,13 @@ import {
   DoorOpen,
   Settings,
   Gift,
+  Sun,
 } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
 
 const nav = [
+  { label: 'Morning Briefing', href: '/dashboard/briefing', icon: Sun },
   { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Contacts', href: '/dashboard/clients', icon: Users },
   { label: 'Vendor Lists', href: '/dashboard/vendors', icon: ListChecks },

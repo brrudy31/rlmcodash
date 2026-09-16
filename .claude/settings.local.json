@@ -7,7 +7,16 @@
       "Bash(npm install *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "mcp__9a49514c-1767-4be2-be55-0ec151bf767b__get_deployment_build_logs",
+      "Bash(git commit -m ' *)",
+      "mcp__9a49514c-1767-4be2-be55-0ec151bf767b__list_deployments",
+      "Bash(mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\api\\\\checklist\\\\today\" && mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\api\\\\checklist\\\\[id]\\\\complete\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\api\\\\clients\\\\[id]\\\\contacts\")",
+      "Bash(mkdir -p \"C:\\\\Users\\\\brrud\\\\OneDrive\\\\Desktop\\\\Claude Projects\\\\rlmco-dashboard\\\\src\\\\app\\\\api\\\\open-houses\\\\[id]\\\\canvass\")",
+      "Bash(npx vercel *)",
+      "Bash(npm run *)",
+      "Bash(rm -rf .next)"
     ]
   }
 }

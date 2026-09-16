@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Settings, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 
+import { Sun } from 'lucide-react';
+
 type CrmType = 'none' | 'ghl' | 'followupboss' | 'hubspot';
 
 const CRM_OPTIONS: { value: CrmType; label: string; description: string; docsUrl: string; fields: { key: 'api_key' | 'location_id'; label: string; placeholder: string; hint: string }[] }[] = [
@@ -50,6 +52,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
+  const [coldLeadDays, setColdLeadDays] = useState(7);
+  const [savingBriefing, setSavingBriefing] = useState(false);
+  const [briefingStatus, setBriefingStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/settings/crm')
@@ -60,7 +65,28 @@ export default function SettingsPage() {
         setLocationId(data.location_id || '');
         setLoading(false);
       });
+    fetch('/api/settings/briefing')
+      .then((r) => r.json())
+      .then((data) => setColdLeadDays(data.cold_lead_days ?? 7));
   }, []);
+
+  async function saveBriefing() {
+    setSavingBriefing(true);
+    setBriefingStatus(null);
+    try {
+      const res = await fetch('/api/settings/briefing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cold_lead_days: coldLeadDays }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setBriefingStatus({ type: 'success', msg: 'Briefing settings saved.' });
+    } catch {
+      setBriefingStatus({ type: 'error', msg: 'Failed to save briefing settings.' });
+    } finally {
+      setSavingBriefing(false);
+    }
+  }
 
   const selected = CRM_OPTIONS.find((o) => o.value === crmType)!;
 
@@ -176,6 +202,57 @@ export default function SettingsPage() {
       <p className="text-xs text-navy-500 mt-4 text-center">
         Credentials are stored securely and used only when pushing sign-ins to your CRM.
       </p>
+
+      {/* Morning Briefing Settings */}
+      <div className="flex items-center gap-3 mt-10 mb-6">
+        <Sun className="w-6 h-6 text-gold-400" />
+        <div>
+          <h2 className="text-xl font-bold text-white">Morning Briefing</h2>
+          <p className="text-navy-400 text-sm mt-0.5">Configure what appears in your daily briefing</p>
+        </div>
+      </div>
+
+      <div className="bg-navy-800 border border-navy-700 rounded-xl p-6 space-y-5">
+        <div>
+          <label className="block text-sm font-medium text-navy-300 mb-1">
+            Cold Lead Threshold (days)
+          </label>
+          <p className="text-xs text-navy-500 mb-3">
+            Contacts with no activity in this many days will appear as cold leads in your briefing.
+          </p>
+          <div className="flex items-center gap-3">
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={coldLeadDays}
+              onChange={(e) => setColdLeadDays(Math.max(1, Number(e.target.value)))}
+              className="w-28 bg-navy-900 border border-navy-600 rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none focus:border-gold-500"
+            />
+            <span className="text-navy-400 text-sm">days without contact</span>
+          </div>
+        </div>
+
+        {briefingStatus && (
+          <div className={`flex items-center gap-2 text-sm rounded-lg px-4 py-3 ${
+            briefingStatus.type === 'success'
+              ? 'bg-green-900/30 border border-green-700 text-green-400'
+              : 'bg-red-900/30 border border-red-700 text-red-400'
+          }`}>
+            {briefingStatus.type === 'success' ? <CheckCircle className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+            {briefingStatus.msg}
+          </div>
+        )}
+
+        <button
+          onClick={saveBriefing}
+          disabled={savingBriefing}
+          className="w-full bg-gold-500 hover:bg-gold-400 disabled:opacity-50 text-navy-900 font-semibold py-2.5 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
+        >
+          {savingBriefing && <Loader2 className="w-4 h-4 animate-spin" />}
+          Save Briefing Settings
+        </button>
+      </div>
     </div>
   );
 }

@@ -204,6 +204,21 @@ const SCHEMA = `
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS user_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    cold_lead_days INTEGER NOT NULL DEFAULT 7,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS briefing_cache (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    data_json TEXT NOT NULL,
+    generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS open_house_signins (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     open_house_id INTEGER NOT NULL REFERENCES open_houses(id) ON DELETE CASCADE,
